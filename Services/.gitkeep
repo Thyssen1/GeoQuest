@@ -1,0 +1,2 @@
+Services live here (e.g. ICountryRepository, IQuestionGenerator, IScoreService, ITimerService).
+Consumed by ViewModels via interfaces so mini-game logic stays unit-testable.

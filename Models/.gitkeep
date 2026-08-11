@@ -1,0 +1,2 @@
+Domain models live here (e.g. Country, FlagQuestion, GameSession, RoundResult).
+Plain POCOs with no Avalonia or ViewModel dependencies.
