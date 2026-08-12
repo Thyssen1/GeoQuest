@@ -4,6 +4,7 @@ using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
 using Avalonia.Markup.Xaml;
+using GeoQuest.Services;
 using GeoQuest.ViewModels;
 using GeoQuest.Views;
 
@@ -20,9 +21,11 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            var game = new GameViewModel(AssetCountryData.Instance, new FlagImageLoader());
+
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainWindowViewModel(),
+                DataContext = new MainWindowViewModel(game),
             };
         }
 

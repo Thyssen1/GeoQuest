@@ -1,0 +1,236 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GeoQuest.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="620"
+             x:Class="GeoQuest.Views.GameView"
+             x:DataType="vm:GameViewModel">
+
+    <UserControl.Styles>
+        <!-- Flags carry true national proportions (Denmark 37:28, the US 19:10), so
+             every cell letterboxes with Stretch="Uniform" rather than filling. -->
+        <!-- Every tile is a fixed 3:2 frame so the grid reads as a uniform row of cards.
+             The flag inside keeps its true proportions and letterboxes, which is why
+             Nepal (0.83:1) and Qatar (2.55:1) sit with visible padding. Greys are used
+             rather than theme colours so the tile reads on both light and dark. -->
+        <Style Selector="Border.option">
+            <Setter Property="BorderThickness" Value="3" />
+            <Setter Property="BorderBrush" Value="#38808080" />
+            <Setter Property="Background" Value="#14808080" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="Border.option.correct">
+            <Setter Property="BorderBrush" Value="#2ECC71" />
+        </Style>
+
+        <Style Selector="Border.option.wrong">
+            <Setter Property="BorderBrush" Value="#E74C3C" />
+        </Style>
+
+        <!-- The right answer, surfaced after a miss or a timeout. -->
+        <Style Selector="Border.option.revealed">
+            <Setter Property="BorderBrush" Value="#2ECC71" />
+            <Setter Property="Opacity" Value="0.85" />
+        </Style>
+
+        <Style Selector="Button.flag">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        </Style>
+
+        <!-- Options are disabled during the reveal. The default disabled chrome dims the
+             flag and paints its own border, which hides the correct/wrong feedback —
+             the one moment the player most needs to see it. Strip it on all states. -->
+        <Style Selector="Button.flag /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <Style Selector="Button.flag:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.flag:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <Style Selector="Button.flag:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <!-- Hover cue, declared after the reveal styles so it only wins while the
+             buttons are live (a disabled button never enters :pointerover). -->
+        <Style Selector="Button.flag:pointerover Border.option">
+            <Setter Property="BorderBrush" Value="#5B9DFF" />
+        </Style>
+
+        <Style Selector="TextBlock.stat">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+
+        <Style Selector="TextBlock.statValue">
+            <Setter Property="FontSize" Value="22" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="24">
+
+        <!-- Scoreboard -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+            <StackPanel Grid.Column="0" Margin="0,0,32,0">
+                <TextBlock Classes="stat" Text="SCORE" />
+                <TextBlock Classes="statValue" Text="{Binding Score}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Margin="0,0,32,0">
+                <TextBlock Classes="stat" Text="STREAK" />
+                <TextBlock Classes="statValue" Text="{Binding Streak}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="2">
+                <TextBlock Classes="stat" Text="CORRECT" />
+                <TextBlock Classes="statValue" Text="{Binding CorrectAnswers}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="4" HorizontalAlignment="Right">
+                <TextBlock Classes="stat" Text="LIVES" HorizontalAlignment="Right" />
+                <TextBlock Classes="statValue"
+                           Text="{Binding LivesText}"
+                           Foreground="#E74C3C"
+                           HorizontalAlignment="Right" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Countdown -->
+        <Grid Grid.Row="1" Margin="0,20,0,0" ColumnDefinitions="*,Auto">
+            <ProgressBar Grid.Column="0"
+                         Minimum="0" Maximum="1"
+                         Value="{Binding TimeFraction}"
+                         Height="6"
+                         VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1"
+                       Margin="12,0,0,0"
+                       Width="38"
+                       TextAlignment="Right"
+                       FontFamily="{StaticResource ResourceKey=ContentControlThemeFontFamily}"
+                       Text="{Binding TimeRemainingText}"
+                       VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- Prompt -->
+        <StackPanel Grid.Row="2" Margin="0,28,0,20" IsVisible="{Binding !IsGameOver}">
+            <TextBlock Text="Which flag belongs to"
+                       HorizontalAlignment="Center"
+                       FontSize="15"
+                       Opacity="0.6" />
+            <TextBlock Text="{Binding Prompt}"
+                       HorizontalAlignment="Center"
+                       FontSize="34"
+                       FontWeight="Bold"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       Margin="0,2,0,0" />
+        </StackPanel>
+
+        <!-- Flag grid -->
+        <ItemsControl Grid.Row="3"
+                      ItemsSource="{Binding Options}"
+                      IsVisible="{Binding !IsGameOver}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Columns="{Binding $parent[ItemsControl].((vm:GameViewModel)DataContext).GridColumns}" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:FlagOptionViewModel">
+                    <Button Classes="flag"
+                            Margin="8"
+                            Command="{Binding $parent[ItemsControl].((vm:GameViewModel)DataContext).SelectCommand}"
+                            CommandParameter="{Binding}">
+                        <!-- Viewbox scales the fixed 300x200 tile to the cell, holding 3:2
+                             regardless of window size. Avalonia has no aspect-ratio panel,
+                             so this is the sane way to pin the ratio. -->
+                        <Viewbox Stretch="Uniform" MaxWidth="340">
+                            <Border Classes="option"
+                                    Width="300" Height="200"
+                                    ClipToBounds="True"
+                                    Classes.correct="{Binding IsCorrect}"
+                                    Classes.wrong="{Binding IsWrong}"
+                                    Classes.revealed="{Binding IsRevealed}">
+                                <Panel>
+                                    <!-- Fallback only when the flag asset is genuinely missing;
+                                         otherwise it shows through the image. -->
+                                    <TextBlock Text="{Binding Code}"
+                                               IsVisible="{Binding !HasImage}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               FontSize="28"
+                                               Opacity="0.35" />
+                                    <!-- Every PNG is now a uniform 480x320, so Fill covers
+                                         the tile exactly without further distortion. -->
+                                    <Image Source="{Binding Image}" Stretch="Fill" />
+                                </Panel>
+                            </Border>
+                        </Viewbox>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Game over -->
+        <StackPanel Grid.Row="3"
+                    IsVisible="{Binding IsGameOver}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="8">
+            <TextBlock Text="Run over"
+                       FontSize="30"
+                       FontWeight="Bold"
+                       HorizontalAlignment="Center" />
+            <TextBlock HorizontalAlignment="Center" FontSize="17" Opacity="0.75">
+                <Run Text="Final score" />
+                <Run Text="{Binding Score}" FontWeight="SemiBold" />
+            </TextBlock>
+            <TextBlock Text="{Binding ResultMessage}"
+                       HorizontalAlignment="Center"
+                       Opacity="0.6" />
+            <Button Content="Play again"
+                    Command="{Binding StartNewGameCommand}"
+                    HorizontalAlignment="Center"
+                    Margin="0,16,0,0"
+                    Padding="24,10" />
+        </StackPanel>
+
+        <!-- Round feedback -->
+        <!-- Fixed height so the grid above does not jump when the message appears. -->
+        <TextBlock Grid.Row="4"
+                   Text="{Binding ResultMessage}"
+                   IsVisible="{Binding !IsGameOver}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Margin="0,16,0,4"
+                   FontSize="16"
+                   Height="24"
+                   Opacity="0.85" />
+    </Grid>
+</UserControl>
