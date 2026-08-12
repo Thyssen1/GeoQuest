@@ -8,9 +8,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Models\" />
-    <Folder Include="Services\" />
-    <AvaloniaResource Include="Assets\**" />
+    <!-- Dev-time tooling lives outside the app; keep it out of the root project's globs. -->
+    <Compile Remove="tools\**" />
+    <None Remove="tools\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SVGs are conversion sources only. The app ships the rasterised PNGs, so it
+         needs no SVG rendering dependency. See tools/FlagConverter. -->
+    <AvaloniaResource Include="Assets\**" Exclude="Assets\Flags\*.svg" />
   </ItemGroup>
 
   <ItemGroup>
