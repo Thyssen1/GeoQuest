@@ -13,9 +13,33 @@ Inspired by the classic *Geo Challenge*, GeoQuest is a set of timed mini-games t
 
 ## Download
 
-Grab the latest **[release](https://github.com/Thyssen1/GeoQuest/releases/latest)** — a single Windows 64-bit executable with no installer and no prerequisites. The .NET runtime, Avalonia and all 255 flag images are inside it. Download, double-click, play.
+Grab the latest **[release](https://github.com/Thyssen1/GeoQuest/releases/latest)**. Every build is self-contained — the .NET runtime, Avalonia and all 255 flag images are bundled, so nothing needs installing.
 
-The executable is not code-signed, so Windows SmartScreen will warn the first time you run it. Choose **More info → Run anyway**, or check the download against the `.sha256` published alongside it.
+| Platform | File | Size |
+| --- | --- | --- |
+| Windows 64-bit | `GeoQuest-<version>-windows-x64.exe` | ~50 MB |
+| macOS (Apple Silicon) | `GeoQuest-<version>-macos-arm64.tar.gz` | ~46 MB |
+| macOS (Intel) | `GeoQuest-<version>-macos-x64.tar.gz` | ~46 MB |
+
+**Windows:** download and run. The executable is unsigned, so SmartScreen warns on first launch — choose **More info → Run anyway**.
+
+**macOS:** extract and drag `GeoQuest.app` to Applications. Apple Silicon Macs (M1–M4) want `arm64`; Intel Macs want `x64`. The app is unsigned and un-notarised, so Gatekeeper refuses it on first launch — right-click the app and choose **Open**, or clear the quarantine flag:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/GeoQuest.app
+```
+
+Checksums for every artifact are published as `SHA256SUMS.txt` alongside the release.
+
+Your best score is stored per-user, outside the application, so it survives upgrades:
+
+| Platform | Location |
+| --- | --- |
+| Windows | `%APPDATA%\GeoQuest\player.json` |
+| macOS | `~/.config/GeoQuest/player.json` |
+| Linux | `~/.config/GeoQuest/player.json` |
+
+Delete that file to reset the score.
 
 ## How it plays
 
@@ -74,11 +98,29 @@ dotnet publish -p:PublishProfile=win-x64
 
 Output lands in `bin/publish/win-x64/GeoQuest.exe` — one self-contained file, roughly 50 MB. Settings live in [Properties/PublishProfiles/win-x64.pubxml](Properties/PublishProfiles/win-x64.pubxml).
 
-For another platform, swap the runtime identifier:
+For Linux, swap the runtime identifier:
 
 ```bash
 dotnet publish -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
 ```
+
+### Building for macOS
+
+macOS is **not** built as a single file. A plain publish into `GeoQuest.app/Contents/MacOS` keeps every binary inside the bundle, whereas single-file publishing extracts native dylibs to a temp directory at runtime — which is awkward to notarise later.
+
+```bash
+dotnet publish GeoQuest.csproj -c Release -r osx-arm64 --self-contained true \
+  -p:DebugType=none -o GeoQuest.app/Contents/MacOS
+sed "s/__VERSION__/1.0.0/g" build/macos/Info.plist > GeoQuest.app/Contents/Info.plist
+chmod +x GeoQuest.app/Contents/MacOS/GeoQuest
+tar -czf GeoQuest-macos-arm64.tar.gz GeoQuest.app
+```
+
+Use `osx-x64` for Intel Macs. The bundle is ~115 MB uncompressed and ~46 MB tarred.
+
+A **tarball, not a zip** — tar preserves the executable bit, and without it the app will not launch. This matters especially when building on Windows, whose filesystem does not carry that bit at all.
+
+Code signing and notarisation are not set up. That requires an Apple Developer ID and a macOS machine, so it can only run on the `macos-latest` job.
 
 **On trimming:** `PublishTrimmed` cuts the executable from 50 MB to 24 MB, but the app then **crashes on startup**:
 
@@ -101,9 +143,11 @@ git tag -a v1.0.0 -m "GeoQuest 1.0.0"
 git push origin v1.0.0
 ```
 
-The workflow runs the test suite, publishes the standalone executable with `Version` taken from the tag, generates a SHA-256 checksum, and creates a GitHub Release with both attached and release notes generated from the commit history.
+The workflow runs the test suite on **every** target platform, then builds three artifacts in parallel — Windows x64, macOS arm64 and macOS x64 — with `Version` taken from the tag. It publishes a `SHA256SUMS.txt` covering all of them and creates the GitHub Release with notes generated from the commit history.
 
-To rehearse without tagging, run the workflow manually from the Actions tab — `workflow_dispatch` builds and uploads the artifact but skips creating a release.
+To rehearse without tagging, run the workflow manually from the Actions tab. `workflow_dispatch` performs every build and uploads the artifacts, but skips creating a release.
+
+Note that the version must match `major.minor.patch`; the workflow fails fast otherwise rather than producing a mislabelled build.
 
 ## Tech Stack
 

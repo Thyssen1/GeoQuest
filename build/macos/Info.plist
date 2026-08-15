@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Template for the macOS .app bundle. The release workflow copies this to
+  GeoQuest.app/Contents/Info.plist and replaces __VERSION__ with the release version.
+
+  No CFBundleIconFile is declared because the project has no .icns yet, so macOS
+  shows the generic application icon.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>GeoQuest</string>
+
+    <key>CFBundleDisplayName</key>
+    <string>GeoQuest</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>com.thyssen.geoquest</string>
+
+    <key>CFBundleExecutable</key>
+    <string>GeoQuest</string>
+
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>__VERSION__</string>
+
+    <key>CFBundleVersion</key>
+    <string>__VERSION__</string>
+
+    <!-- .NET 10 requires macOS 12 Monterey or newer. -->
+    <key>LSMinimumSystemVersion</key>
+    <string>12.0</string>
+
+    <key>NSHighResolutionCapable</key>
+    <true/>
+
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.educational-games</string>
+</dict>
+</plist>

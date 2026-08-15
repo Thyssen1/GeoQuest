@@ -1,7 +1,8 @@
 name: Release
 
-# Pushing a v-prefixed tag builds the standalone executable and publishes a GitHub
-# Release with it attached. workflow_dispatch allows a dry run without tagging.
+# Pushing a v-prefixed tag builds every platform and publishes a GitHub Release with
+# the artifacts attached. workflow_dispatch runs the same builds without releasing,
+# which is the way to rehearse a change to this file before tagging.
 on:
   push:
     tags:
@@ -17,8 +18,49 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: windows-latest
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Resolve version
+        id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # refs/tags/v1.0.0 -> 1.0.0
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "::error::Version '$VERSION' is not in major.minor.patch form."
+            exit 1
+          fi
+
+          echo "Building version $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.label }}
+    needs: version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One platform failing should not hide whether the others are healthy.
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            label: windows-x64
+          - os: macos-latest
+            rid: osx-arm64
+            label: macos-arm64
+          - os: macos-latest
+            rid: osx-x64
+            label: macos-x64
 
     steps:
       - name: Check out
@@ -29,75 +71,121 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Resolve version
-        id: version
-        shell: pwsh
-        run: |
-          if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
-            $version = '${{ github.event.inputs.version }}'
-          } else {
-            # refs/tags/v1.0.0 -> 1.0.0
-            $version = '${{ github.ref_name }}' -replace '^v', ''
-          }
-
-          if ($version -notmatch '^\d+\.\d+\.\d+') {
-            Write-Error "Version '$version' is not in major.minor.patch form."
-            exit 1
-          }
-
-          Write-Host "Building version $version"
-          "version=$version" >> $env:GITHUB_OUTPUT
-
       - name: Run tests
         run: dotnet test GeoQuest.sln -c Release
 
-      - name: Publish standalone executable
-        run: dotnet publish GeoQuest.csproj -p:PublishProfile=win-x64 -p:Version=${{ steps.version.outputs.version }}
-
-      - name: Name artifact and checksum it
-        id: package
+      # Windows ships one compressed self-contained .exe.
+      - name: Publish Windows executable
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $version = '${{ steps.version.outputs.version }}'
-          $artifact = "GeoQuest-$version-win-x64.exe"
+          dotnet publish GeoQuest.csproj `
+            -p:PublishProfile=win-x64 `
+            -p:Version=${{ needs.version.outputs.version }}
 
+          $artifact = "GeoQuest-${{ needs.version.outputs.version }}-${{ matrix.label }}.exe"
           Copy-Item 'bin/publish/win-x64/GeoQuest.exe' $artifact
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Move-Item $artifact dist/
 
-          # The executable is unsigned, so publish a checksum people can verify against.
-          $hash = (Get-FileHash $artifact -Algorithm SHA256).Hash.ToLower()
-          "$hash  $artifact" | Out-File "$artifact.sha256" -Encoding ascii -NoNewline
+      # macOS ships a .app bundle inside a tarball. A tarball rather than a zip
+      # because it preserves the executable bit, without which the app will not launch.
+      #
+      # Single-file publishing is deliberately NOT used here: it would extract native
+      # dylibs to a temp directory at runtime, which is awkward to notarise later. A
+      # plain publish into Contents/MacOS keeps every binary inside the signed bundle.
+      - name: Publish macOS app bundle
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
 
-          $sizeMb = [math]::Round((Get-Item $artifact).Length / 1MB, 1)
-          Write-Host "$artifact is $sizeMb MB, sha256 $hash"
+          VERSION="${{ needs.version.outputs.version }}"
+          APP="GeoQuest.app"
 
-          "artifact=$artifact" >> $env:GITHUB_OUTPUT
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-      - name: Upload build artifact
+          dotnet publish GeoQuest.csproj \
+            -c Release \
+            -r "${{ matrix.rid }}" \
+            --self-contained true \
+            -p:Version="$VERSION" \
+            -p:DebugType=none \
+            -p:DebugSymbols=false \
+            -o "$APP/Contents/MacOS"
+
+          sed "s/__VERSION__/$VERSION/g" build/macos/Info.plist > "$APP/Contents/Info.plist"
+
+          chmod +x "$APP/Contents/MacOS/GeoQuest"
+
+          mkdir -p dist
+          tar -czf "dist/GeoQuest-$VERSION-${{ matrix.label }}.tar.gz" "$APP"
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: geoquest-win-x64
-          path: |
-            ${{ steps.package.outputs.artifact }}
-            ${{ steps.package.outputs.artifact }}.sha256
+          name: geoquest-${{ matrix.label }}
+          path: dist/*
           retention-days: 14
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd dist
+          # The binaries are unsigned, so publish hashes people can verify against.
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
 
       - name: Publish GitHub Release
-        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          name: GeoQuest ${{ steps.version.outputs.version }}
+          name: GeoQuest ${{ needs.version.outputs.version }}
           generate_release_notes: true
-          files: |
-            ${{ steps.package.outputs.artifact }}
-            ${{ steps.package.outputs.artifact }}.sha256
+          files: dist/*
           body: |
-            ## Download
+            ## Downloads
 
-            **[GeoQuest-${{ steps.version.outputs.version }}-win-x64.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/GeoQuest-${{ steps.version.outputs.version }}-win-x64.exe)** — Windows 64-bit, standalone.
+            | Platform | File |
+            | --- | --- |
+            | Windows 64-bit | `GeoQuest-${{ needs.version.outputs.version }}-windows-x64.exe` |
+            | macOS (Apple Silicon) | `GeoQuest-${{ needs.version.outputs.version }}-macos-arm64.tar.gz` |
+            | macOS (Intel) | `GeoQuest-${{ needs.version.outputs.version }}-macos-x64.tar.gz` |
 
-            No installation and no prerequisites: the .NET runtime, Avalonia and all 255 flag
-            images are inside the executable. Download it and run it.
+            Every download is self-contained: the .NET runtime, Avalonia and all 255 flag
+            images are bundled. Nothing needs installing.
 
-            The executable is not code-signed, so Windows SmartScreen will warn on first run.
-            Choose **More info > Run anyway**, or verify the download against the published
-            `.sha256` checksum first.
+            ### Windows
+
+            Download and run. The executable is unsigned, so SmartScreen warns on first
+            launch — choose **More info → Run anyway**.
+
+            ### macOS
+
+            Extract the tarball and drag **GeoQuest.app** to your Applications folder.
+            Apple Silicon Macs want the `arm64` build; Intel Macs want `x64`.
+
+            The app is unsigned and un-notarised, so Gatekeeper will refuse it on first
+            launch. Right-click the app and choose **Open**, then confirm. If macOS still
+            refuses, clear the quarantine flag:
+
+            ```
+            xattr -dr com.apple.quarantine /Applications/GeoQuest.app
+            ```
+
+            ### Verifying a download
+
+            Checksums for every file are in `SHA256SUMS.txt`.
