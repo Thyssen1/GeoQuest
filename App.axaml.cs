@@ -21,12 +21,17 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var game = new GameViewModel(AssetCountryData.Instance, new FlagImageLoader());
+            var game = new GameViewModel(
+                AssetCountryData.Instance,
+                new FlagImageLoader(),
+                new FileScoreStore());
 
             desktop.MainWindow = new MainWindow
             {
                 DataContext = new MainWindowViewModel(game),
             };
+            
+            desktop.ShutdownRequested += (_, _) => game.Dispose();
         }
 
         base.OnFrameworkInitializationCompleted();

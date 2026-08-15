@@ -5,12 +5,16 @@
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Dev-time tooling lives outside the app; keep it out of the root project's globs. -->
+    <!-- Dev-time tooling and tests live outside the app; the root project sits at the
+         repository root, so its default **/*.cs glob would otherwise compile them in. -->
     <Compile Remove="tools\**" />
     <None Remove="tools\**" />
+    <Compile Remove="tests\**" />
+    <None Remove="tests\**" />
   </ItemGroup>
 
   <ItemGroup>

@@ -23,21 +23,24 @@
             <Setter Property="Transitions">
                 <Transitions>
                     <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+                    <ThicknessTransition Property="BorderThickness" Duration="0:0:0.18" />
                 </Transitions>
             </Setter>
         </Style>
-
+        
         <Style Selector="Border.option.correct">
             <Setter Property="BorderBrush" Value="#2ECC71" />
+            <Setter Property="BorderThickness" Value="12" />
         </Style>
 
         <Style Selector="Border.option.wrong">
             <Setter Property="BorderBrush" Value="#E74C3C" />
+            <Setter Property="BorderThickness" Value="12" />
         </Style>
-
-        <!-- The right answer, surfaced after a miss or a timeout. -->
+        
         <Style Selector="Border.option.revealed">
             <Setter Property="BorderBrush" Value="#2ECC71" />
+            <Setter Property="BorderThickness" Value="12" />
             <Setter Property="Opacity" Value="0.85" />
         </Style>
 
@@ -49,10 +52,7 @@
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
         </Style>
-
-        <!-- Options are disabled during the reveal. The default disabled chrome dims the
-             flag and paints its own border, which hides the correct/wrong feedback —
-             the one moment the player most needs to see it. Strip it on all states. -->
+        
         <Style Selector="Button.flag /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -74,9 +74,7 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
-
-        <!-- Hover cue, declared after the reveal styles so it only wins while the
-             buttons are live (a disabled button never enters :pointerover). -->
+        
         <Style Selector="Button.flag:pointerover Border.option">
             <Setter Property="BorderBrush" Value="#5B9DFF" />
         </Style>
@@ -95,23 +93,30 @@
     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="24">
 
         <!-- Scoreboard -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
             <StackPanel Grid.Column="0" Margin="0,0,32,0">
                 <TextBlock Classes="stat" Text="SCORE" />
                 <TextBlock Classes="statValue" Text="{Binding Score}" />
             </StackPanel>
 
             <StackPanel Grid.Column="1" Margin="0,0,32,0">
+                <TextBlock Classes="stat" Text="BEST" />
+                <TextBlock Classes="statValue"
+                           Text="{Binding BestScore}"
+                           Foreground="#F1C40F" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Margin="0,0,32,0">
                 <TextBlock Classes="stat" Text="STREAK" />
                 <TextBlock Classes="statValue" Text="{Binding Streak}" />
             </StackPanel>
 
-            <StackPanel Grid.Column="2">
+            <StackPanel Grid.Column="3">
                 <TextBlock Classes="stat" Text="CORRECT" />
                 <TextBlock Classes="statValue" Text="{Binding CorrectAnswers}" />
             </StackPanel>
 
-            <StackPanel Grid.Column="4" HorizontalAlignment="Right">
+            <StackPanel Grid.Column="5" HorizontalAlignment="Right">
                 <TextBlock Classes="stat" Text="LIVES" HorizontalAlignment="Right" />
                 <TextBlock Classes="statValue"
                            Text="{Binding LivesText}"
@@ -149,6 +154,11 @@
                        TextWrapping="Wrap"
                        TextAlignment="Center"
                        Margin="0,2,0,0" />
+            <TextBlock Text="Press 1–6 to answer with the keyboard"
+                       HorizontalAlignment="Center"
+                       FontSize="12"
+                       Opacity="0.35"
+                       Margin="0,10,0,0" />
         </StackPanel>
 
         <!-- Flag grid -->
@@ -167,9 +177,7 @@
                             Margin="8"
                             Command="{Binding $parent[ItemsControl].((vm:GameViewModel)DataContext).SelectCommand}"
                             CommandParameter="{Binding}">
-                        <!-- Viewbox scales the fixed 300x200 tile to the cell, holding 3:2
-                             regardless of window size. Avalonia has no aspect-ratio panel,
-                             so this is the sane way to pin the ratio. -->
+
                         <Viewbox Stretch="Uniform" MaxWidth="340">
                             <Border Classes="option"
                                     Width="300" Height="200"
@@ -178,16 +186,14 @@
                                     Classes.wrong="{Binding IsWrong}"
                                     Classes.revealed="{Binding IsRevealed}">
                                 <Panel>
-                                    <!-- Fallback only when the flag asset is genuinely missing;
-                                         otherwise it shows through the image. -->
+       
                                     <TextBlock Text="{Binding Code}"
                                                IsVisible="{Binding !HasImage}"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center"
                                                FontSize="28"
                                                Opacity="0.35" />
-                                    <!-- Every PNG is now a uniform 480x320, so Fill covers
-                                         the tile exactly without further distortion. -->
+        
                                     <Image Source="{Binding Image}" Stretch="Fill" />
                                 </Panel>
                             </Border>
@@ -214,20 +220,24 @@
             <TextBlock Text="{Binding ResultMessage}"
                        HorizontalAlignment="Center"
                        Opacity="0.6" />
+            <TextBlock Text="🏆 New best score!"
+                       IsVisible="{Binding IsNewBest}"
+                       HorizontalAlignment="Center"
+                       FontSize="17"
+                       FontWeight="SemiBold"
+                       Foreground="#F1C40F"
+                       Margin="0,6,0,0" />
             <Button Content="Play again"
                     Command="{Binding StartNewGameCommand}"
                     HorizontalAlignment="Center"
                     Margin="0,16,0,0"
                     Padding="24,10" />
         </StackPanel>
-
-        <!-- Round feedback -->
-        <!-- Fixed height so the grid above does not jump when the message appears. -->
+        
         <TextBlock Grid.Row="4"
                    Text="{Binding ResultMessage}"
                    IsVisible="{Binding !IsGameOver}"
                    HorizontalAlignment="Center"
-                   VerticalAlignment="Center"
                    Margin="0,16,0,4"
                    FontSize="16"
                    Height="24"

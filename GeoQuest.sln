@@ -1,0 +1,56 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeoQuest", "GeoQuest.csproj", "{D1B665C5-F257-47C8-B024-698549F091A1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{07C2787E-EAC7-C090-1BA3-A61EC2A24D84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlagConverter", "tools\FlagConverter\FlagConverter.csproj", "{89F2843D-76E6-4480-8493-6E5AE75A0DCD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeoQuest.Tests", "tests\GeoQuest.Tests\GeoQuest.Tests.csproj", "{BE68E482-652E-487F-83EA-4CB4BB699BA3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D1B665C5-F257-47C8-B024-698549F091A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1B665C5-F257-47C8-B024-698549F091A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1B665C5-F257-47C8-B024-698549F091A1}.Debug|x64.ActiveCfg = Debug|x64
+		{D1B665C5-F257-47C8-B024-698549F091A1}.Debug|x64.Build.0 = Debug|x64
+		{D1B665C5-F257-47C8-B024-698549F091A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1B665C5-F257-47C8-B024-698549F091A1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1B665C5-F257-47C8-B024-698549F091A1}.Release|x64.ActiveCfg = Release|x64
+		{D1B665C5-F257-47C8-B024-698549F091A1}.Release|x64.Build.0 = Release|x64
+		{89F2843D-76E6-4480-8493-6E5AE75A0DCD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{89F2843D-76E6-4480-8493-6E5AE75A0DCD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{89F2843D-76E6-4480-8493-6E5AE75A0DCD}.Debug|x64.ActiveCfg = Debug|x64
+		{89F2843D-76E6-4480-8493-6E5AE75A0DCD}.Debug|x64.Build.0 = Debug|x64
+		{89F2843D-76E6-4480-8493-6E5AE75A0DCD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{89F2843D-76E6-4480-8493-6E5AE75A0DCD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{89F2843D-76E6-4480-8493-6E5AE75A0DCD}.Release|x64.ActiveCfg = Release|x64
+		{89F2843D-76E6-4480-8493-6E5AE75A0DCD}.Release|x64.Build.0 = Release|x64
+		{BE68E482-652E-487F-83EA-4CB4BB699BA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE68E482-652E-487F-83EA-4CB4BB699BA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE68E482-652E-487F-83EA-4CB4BB699BA3}.Debug|x64.ActiveCfg = Debug|x64
+		{BE68E482-652E-487F-83EA-4CB4BB699BA3}.Debug|x64.Build.0 = Debug|x64
+		{BE68E482-652E-487F-83EA-4CB4BB699BA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE68E482-652E-487F-83EA-4CB4BB699BA3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE68E482-652E-487F-83EA-4CB4BB699BA3}.Release|x64.ActiveCfg = Release|x64
+		{BE68E482-652E-487F-83EA-4CB4BB699BA3}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{89F2843D-76E6-4480-8493-6E5AE75A0DCD} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
+		{BE68E482-652E-487F-83EA-4CB4BB699BA3} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+	EndGlobalSection
+EndGlobal
