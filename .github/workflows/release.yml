@@ -1,0 +1,103 @@
+name: Release
+
+# Pushing a v-prefixed tag builds the standalone executable and publishes a GitHub
+# Release with it attached. workflow_dispatch allows a dry run without tagging.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, without the leading v (e.g. 1.0.0)'
+        required: true
+        default: '0.0.0-test'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            $version = '${{ github.event.inputs.version }}'
+          } else {
+            # refs/tags/v1.0.0 -> 1.0.0
+            $version = '${{ github.ref_name }}' -replace '^v', ''
+          }
+
+          if ($version -notmatch '^\d+\.\d+\.\d+') {
+            Write-Error "Version '$version' is not in major.minor.patch form."
+            exit 1
+          }
+
+          Write-Host "Building version $version"
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Run tests
+        run: dotnet test GeoQuest.sln -c Release
+
+      - name: Publish standalone executable
+        run: dotnet publish GeoQuest.csproj -p:PublishProfile=win-x64 -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Name artifact and checksum it
+        id: package
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $artifact = "GeoQuest-$version-win-x64.exe"
+
+          Copy-Item 'bin/publish/win-x64/GeoQuest.exe' $artifact
+
+          # The executable is unsigned, so publish a checksum people can verify against.
+          $hash = (Get-FileHash $artifact -Algorithm SHA256).Hash.ToLower()
+          "$hash  $artifact" | Out-File "$artifact.sha256" -Encoding ascii -NoNewline
+
+          $sizeMb = [math]::Round((Get-Item $artifact).Length / 1MB, 1)
+          Write-Host "$artifact is $sizeMb MB, sha256 $hash"
+
+          "artifact=$artifact" >> $env:GITHUB_OUTPUT
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: geoquest-win-x64
+          path: |
+            ${{ steps.package.outputs.artifact }}
+            ${{ steps.package.outputs.artifact }}.sha256
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: GeoQuest ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.package.outputs.artifact }}
+            ${{ steps.package.outputs.artifact }}.sha256
+          body: |
+            ## Download
+
+            **[GeoQuest-${{ steps.version.outputs.version }}-win-x64.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/GeoQuest-${{ steps.version.outputs.version }}-win-x64.exe)** — Windows 64-bit, standalone.
+
+            No installation and no prerequisites: the .NET runtime, Avalonia and all 255 flag
+            images are inside the executable. Download it and run it.
+
+            The executable is not code-signed, so Windows SmartScreen will warn on first run.
+            Choose **More info > Run anyway**, or verify the download against the published
+            `.sha256` checksum first.

@@ -195,6 +195,12 @@ publish/
 *.pubxml
 *.publishproj
 
+# The rule above exists because web deploy profiles can carry unencrypted connection
+# strings. GeoQuest's profile is a plain FileSystem publish with no secrets, and the
+# release workflow references it by name, so it has to be committed. Scoped to this
+# directory so any future web deploy profile stays ignored.
+!Properties/PublishProfiles/*.pubxml
+
 # Microsoft Azure Web App publish settings. Comment the next line if you want to
 # checkin your Azure Web App publish settings, but sensitive information contained
 # in these scripts will be unencrypted

@@ -8,6 +8,13 @@
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Product>GeoQuest</Product>
+    <Description>A fast-paced geography trivia game built with Avalonia UI.</Description>
+    <Authors>Thyssen</Authors>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- Dev-time tooling and tests live outside the app; the root project sits at the
          repository root, so its default **/*.cs glob would otherwise compile them in. -->
@@ -16,6 +23,18 @@
     <Compile Remove="tests\**" />
     <None Remove="tests\**" />
   </ItemGroup>
+
+  <!--
+    SkiaSharp and HarfBuzzSharp ship native .pdb symbols that are copied on publish.
+    They add ~100 MB to a release drop and are of no use to a player, so drop every
+    .pdb from the publish set. DebugType alone does not remove them, because they
+    arrive as native package assets rather than as this project's own symbols.
+  -->
+  <Target Name="StripPdbsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <!-- SVGs are conversion sources only. The app ships the rasterised PNGs, so it

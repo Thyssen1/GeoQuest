@@ -11,6 +11,12 @@ Inspired by the classic *Geo Challenge*, GeoQuest is a set of timed mini-games t
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 ![Status](https://img.shields.io/badge/milestone%201-playable-2ECC71)
 
+## Download
+
+Grab the latest **[release](https://github.com/Thyssen1/GeoQuest/releases/latest)** — a single Windows 64-bit executable with no installer and no prerequisites. The .NET runtime, Avalonia and all 255 flag images are inside it. Download, double-click, play.
+
+The executable is not code-signed, so Windows SmartScreen will warn the first time you run it. Choose **More info → Run anyway**, or check the download against the `.sha256` published alongside it.
+
 ## How it plays
 
 You are shown a country name and a grid of flags, and you pick the right one before the clock runs out.
@@ -59,6 +65,45 @@ dotnet build GeoQuest.sln -c Release -p:Platform=x64
 ```
 
 The classic `.sln` format is used deliberately over the newer `.slnx`, which requires Visual Studio 2022 17.14+ or Rider 2025.
+
+### Building the standalone executable
+
+```bash
+dotnet publish -p:PublishProfile=win-x64
+```
+
+Output lands in `bin/publish/win-x64/GeoQuest.exe` — one self-contained file, roughly 50 MB. Settings live in [Properties/PublishProfiles/win-x64.pubxml](Properties/PublishProfiles/win-x64.pubxml).
+
+For another platform, swap the runtime identifier:
+
+```bash
+dotnet publish -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
+```
+
+**On trimming:** `PublishTrimmed` cuts the executable from 50 MB to 24 MB, but the app then **crashes on startup**:
+
+```
+System.InvalidOperationException: Reflection-based serialization has been disabled
+   at GeoQuest.Services.JsonCountryRepository.Load(Stream json)
+```
+
+Two things stand in the way, both flagged as `IL2026` at publish time. `System.Text.Json` uses reflection unless given a source-generated `JsonSerializerContext`, and Avalonia's default `ViewLocator` resolves views by reflection — [ViewLocator.cs](ViewLocator.cs) carries a `RequiresUnreferencedCode` attribute saying exactly that. Fixing both is a prerequisite for trimming, and for NativeAOT later.
+
+### Cutting a release
+
+Releases are built by [.github/workflows/release.yml](.github/workflows/release.yml), triggered by pushing a version tag:
+
+```bash
+git tag -a v1.0.0 -m "GeoQuest 1.0.0"
+```
+
+```bash
+git push origin v1.0.0
+```
+
+The workflow runs the test suite, publishes the standalone executable with `Version` taken from the tag, generates a SHA-256 checksum, and creates a GitHub Release with both attached and release notes generated from the commit history.
+
+To rehearse without tagging, run the workflow manually from the Actions tab — `workflow_dispatch` builds and uploads the artifact but skips creating a release.
 
 ## Tech Stack
 
