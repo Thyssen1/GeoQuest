@@ -17,9 +17,6 @@ namespace GeoQuest.ViewModels;
 /// </summary>
 public partial class GameViewModel : ViewModelBase, IDisposable
 {
-    /// <summary>Wrong answers allowed before the run ends.</summary>
-    private const int StartingLives = 3;
-
     /// <summary>How long the correct answer stays on screen before the next round.</summary>
     private static readonly TimeSpan RevealDelay = TimeSpan.FromMilliseconds(1300);
 
@@ -29,6 +26,7 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     private readonly IQuestionGenerator _generator;
     private readonly IFlagImageLoader _images;
     private readonly IScoreStore _scores;
+    private readonly int _startingLives;
     private readonly DispatcherTimer _roundTimer;
     private readonly DispatcherTimer _revealTimer;
     private readonly bool _isDesignMode;
@@ -60,7 +58,7 @@ public partial class GameViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LivesText))]
-    private int _lives = StartingLives;
+    private int _lives;
 
     [ObservableProperty]
     private string _prompt = string.Empty;
@@ -89,12 +87,15 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private string _resultMessage = string.Empty;
 
-    public GameViewModel(ICountryRepository repository, IFlagImageLoader images, IScoreStore scores)
-        : this(new RandomQuestionGenerator(repository), images, scores)
+    /// <summary>Raised when the player asks to leave the run and return to the menu.</summary>
+    public event EventHandler? MenuRequested;
+
+    public GameViewModel(ICountryRepository repository, IFlagImageLoader images, IScoreStore scores, GameSettings? settings = null)
+        : this(new RandomQuestionGenerator(repository), images, scores, settings)
     {
     }
 
-    public GameViewModel(IQuestionGenerator generator, IFlagImageLoader images, IScoreStore scores)
+    public GameViewModel(IQuestionGenerator generator, IFlagImageLoader images, IScoreStore scores, GameSettings? settings = null)
     {
         ArgumentNullException.ThrowIfNull(generator);
         ArgumentNullException.ThrowIfNull(images);
@@ -103,6 +104,7 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         _generator = generator;
         _images = images;
         _scores = scores;
+        _startingLives = (settings ?? new GameSettings()).Sanitised().StartingLives;
         _isDesignMode = Design.IsDesignMode;
 
         _roundTimer = new DispatcherTimer { Interval = TickInterval };
@@ -140,7 +142,7 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         Streak = 0;
         BestStreak = 0;
         CorrectAnswers = 0;
-        Lives = StartingLives;
+        Lives = _startingLives;
         IsGameOver = false;
         IsNewBest = false;
         ResultMessage = string.Empty;
@@ -215,6 +217,17 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         {
             Select(option);
         }
+    }
+
+    /// <summary>Abandons the run and hands control back to the menu.</summary>
+    [RelayCommand]
+    private void ReturnToMenu()
+    {
+        _roundTimer.Stop();
+        _revealTimer.Stop();
+        _clock.Stop();
+
+        MenuRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private bool CanSelect(FlagOptionViewModel? option) => !IsRevealing && !IsGameOver;

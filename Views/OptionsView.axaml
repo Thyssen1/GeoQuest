@@ -1,0 +1,132 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GeoQuest.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="720"
+             x:Class="GeoQuest.Views.OptionsView"
+             x:DataType="vm:OptionsViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.settingName">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style Selector="TextBlock.settingHint">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+        </Style>
+
+        <Style Selector="Border.settingRow">
+            <Setter Property="Background" Value="#14808080" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="18" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="24">
+
+        <TextBlock Grid.Row="0"
+                   Text="Options"
+                   FontSize="34"
+                   FontWeight="Bold"
+                   Margin="0,4,0,20" />
+
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="14" MaxWidth="560" HorizontalAlignment="Left">
+
+                <!-- Starting lives -->
+                <Border Classes="settingRow">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                            <TextBlock Classes="settingName" Text="Starting lives" />
+                            <TextBlock Classes="settingHint"
+                                       Text="How many wrong answers or timeouts a run survives. Applies to your next run." />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    Spacing="10"
+                                    VerticalAlignment="Center">
+                            <RadioButton GroupName="Lives" Content="1" IsChecked="{Binding IsOneLife}" />
+                            <RadioButton GroupName="Lives" Content="3" IsChecked="{Binding IsThreeLives}" />
+                            <RadioButton GroupName="Lives" Content="5" IsChecked="{Binding IsFiveLives}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Best score -->
+                <Border Classes="settingRow">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                <TextBlock Classes="settingName" Text="Best score" />
+                                <TextBlock Classes="settingHint"
+                                           Text="Your highest score so far. Resetting cannot be undone." />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding BestScore}"
+                                           FontSize="22"
+                                           FontWeight="SemiBold"
+                                           Foreground="#F1C40F"
+                                           VerticalAlignment="Center" />
+                                <Button Content="Reset"
+                                        Command="{Binding BeginResetScoreCommand}"
+                                        IsEnabled="{Binding HasBestScore}"
+                                        IsVisible="{Binding !IsConfirmingReset}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Two-step confirmation, since this destroys data. -->
+                        <Border IsVisible="{Binding IsConfirmingReset}"
+                                Background="#22E74C3C"
+                                CornerRadius="8"
+                                Padding="14">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="Erase your best score permanently?"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,12,0" />
+                                <Button Grid.Column="1"
+                                        Content="Cancel"
+                                        Margin="0,0,8,0"
+                                        Command="{Binding CancelResetScoreCommand}" />
+                                <Button Grid.Column="2"
+                                        Content="Erase"
+                                        Foreground="#E74C3C"
+                                        Command="{Binding ConfirmResetScoreCommand}" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Save location -->
+                <Border Classes="settingRow">
+                    <StackPanel>
+                        <TextBlock Classes="settingName" Text="Saved data" />
+                        <TextBlock Classes="settingHint"
+                                   Text="Your score and settings are stored here, outside the app, so they survive upgrades." />
+                        <SelectableTextBlock Text="{Binding SaveLocation}"
+                                             FontFamily="Consolas,Menlo,monospace"
+                                             FontSize="12"
+                                             Opacity="0.75"
+                                             TextWrapping="Wrap"
+                                             Margin="0,8,0,0" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Button Grid.Row="2"
+                Content="Back"
+                Command="{Binding BackCommand}"
+                Padding="28,10"
+                Margin="0,20,0,40"
+                HorizontalAlignment="Left" />
+    </Grid>
+</UserControl>

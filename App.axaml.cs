@@ -21,17 +21,15 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var game = new GameViewModel(
-                AssetCountryData.Instance,
-                new FlagImageLoader(),
-                new FileScoreStore());
+            var shell = new MainWindowViewModel(new FileSettingsStore(), new FileScoreStore());
 
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainWindowViewModel(game),
+                DataContext = shell,
             };
-            
-            desktop.ShutdownRequested += (_, _) => game.Dispose();
+
+            // The shell owns the running game and its two dispatcher timers.
+            desktop.ShutdownRequested += (_, _) => shell.Dispose();
         }
 
         base.OnFrameworkInitializationCompleted();

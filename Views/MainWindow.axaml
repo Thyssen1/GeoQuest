@@ -3,37 +3,42 @@
         xmlns:vm="using:GeoQuest.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="620"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="720"
         x:Class="GeoQuest.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Width="900" Height="720"
         MinWidth="560" MinHeight="540"
-        Title="GeoQuest — Guess the Flag">
+        Title="GeoQuest">
 
     <Design.DataContext>
         <!-- Previewer only; the runtime DataContext is set in App.axaml.cs -->
         <vm:MainWindowViewModel />
     </Design.DataContext>
 
-    <!-- Bound on the Window rather than the view so answering by keyboard does not
-         depend on which control currently holds focus. Number-row and numpad both. -->
+    <!-- Bound on the Window so answering by keyboard does not depend on focus. The
+         shell forwards them to the game only while a run is on screen. -->
     <Window.KeyBindings>
-        <KeyBinding Gesture="D1" Command="{Binding Game.SelectByNumberCommand}" CommandParameter="1" />
-        <KeyBinding Gesture="D2" Command="{Binding Game.SelectByNumberCommand}" CommandParameter="2" />
-        <KeyBinding Gesture="D3" Command="{Binding Game.SelectByNumberCommand}" CommandParameter="3" />
-        <KeyBinding Gesture="D4" Command="{Binding Game.SelectByNumberCommand}" CommandParameter="4" />
-        <KeyBinding Gesture="D5" Command="{Binding Game.SelectByNumberCommand}" CommandParameter="5" />
-        <KeyBinding Gesture="D6" Command="{Binding Game.SelectByNumberCommand}" CommandParameter="6" />
-        <KeyBinding Gesture="NumPad1" Command="{Binding Game.SelectByNumberCommand}" CommandParameter="1" />
-        <KeyBinding Gesture="NumPad2" Command="{Binding Game.SelectByNumberCommand}" CommandParameter="2" />
-        <KeyBinding Gesture="NumPad3" Command="{Binding Game.SelectByNumberCommand}" CommandParameter="3" />
-        <KeyBinding Gesture="NumPad4" Command="{Binding Game.SelectByNumberCommand}" CommandParameter="4" />
-        <KeyBinding Gesture="NumPad5" Command="{Binding Game.SelectByNumberCommand}" CommandParameter="5" />
-        <KeyBinding Gesture="NumPad6" Command="{Binding Game.SelectByNumberCommand}" CommandParameter="6" />
+        <KeyBinding Gesture="D1" Command="{Binding SelectByNumberCommand}" CommandParameter="1" />
+        <KeyBinding Gesture="D2" Command="{Binding SelectByNumberCommand}" CommandParameter="2" />
+        <KeyBinding Gesture="D3" Command="{Binding SelectByNumberCommand}" CommandParameter="3" />
+        <KeyBinding Gesture="D4" Command="{Binding SelectByNumberCommand}" CommandParameter="4" />
+        <KeyBinding Gesture="D5" Command="{Binding SelectByNumberCommand}" CommandParameter="5" />
+        <KeyBinding Gesture="D6" Command="{Binding SelectByNumberCommand}" CommandParameter="6" />
+        <KeyBinding Gesture="NumPad1" Command="{Binding SelectByNumberCommand}" CommandParameter="1" />
+        <KeyBinding Gesture="NumPad2" Command="{Binding SelectByNumberCommand}" CommandParameter="2" />
+        <KeyBinding Gesture="NumPad3" Command="{Binding SelectByNumberCommand}" CommandParameter="3" />
+        <KeyBinding Gesture="NumPad4" Command="{Binding SelectByNumberCommand}" CommandParameter="4" />
+        <KeyBinding Gesture="NumPad5" Command="{Binding SelectByNumberCommand}" CommandParameter="5" />
+        <KeyBinding Gesture="NumPad6" Command="{Binding SelectByNumberCommand}" CommandParameter="6" />
+        <KeyBinding Gesture="Escape" Command="{Binding BackCommand}" />
     </Window.KeyBindings>
 
-    <!-- Resolved to GameView by ViewLocator -->
-    <ContentControl Content="{Binding Game}" />
+    <!-- Each page is resolved to its view by ViewLocator -->
+    <TransitioningContentControl Content="{Binding CurrentPage}">
+        <TransitioningContentControl.PageTransition>
+            <CrossFade Duration="0:0:0.2" />
+        </TransitioningContentControl.PageTransition>
+    </TransitioningContentControl>
 
 </Window>

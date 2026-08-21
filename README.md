@@ -4,7 +4,9 @@
 
 Inspired by the classic *Geo Challenge*, GeoQuest is a set of timed mini-games that ask you to identify places from flags, outlines, cities and landmarks. Answer correctly and it gets harder — more options to choose from, less time to choose.
 
-![GeoQuest — the Guess the Flag mini-game](docs/screenshot.png)
+| | |
+| --- | --- |
+| ![The GeoQuest menu](docs/menu.png) | ![The Guess the Flag mini-game](docs/screenshot.png) |
 
 [![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/download)
 [![Avalonia](https://img.shields.io/badge/Avalonia-12-8B44AC)](https://avaloniaui.net/)
@@ -51,7 +53,9 @@ You are shown a country name and a grid of flags, and you pick the right one bef
 - **Three misses ends the run.** A wrong pick or a timeout costs a life and resets your streak.
 - **Your best score persists** between sessions, stored under your user application data directory.
 
-Answer with the mouse, or press **1–6** on the number row or numpad.
+Answer with the mouse, or press **1–6** on the number row or numpad. **Esc** abandons a run and returns to the menu.
+
+**Options** lets you set starting lives (1, 3 or 5), reset your best score, and see where your saved data lives.
 
 Questions are drawn from the **197 sovereign states**. Territories, the four UK home nations and the EU flag ship with the app but are kept out of the question pool — offering Scotland alongside the United Kingdom would not be a fair round.
 
@@ -193,6 +197,14 @@ GeoQuest/
 ```
 
 The layering rule: **Views** bind to **ViewModels**, which depend on **Services** through interfaces, which return **Models**. Nothing flows the other way — Models and Services never reference Avalonia types. This is what keeps the game logic unit-testable and portable to mobile.
+
+### Navigation
+
+`MainWindowViewModel` is the shell. It owns which page is on screen (`CurrentPage`) and the lifetime of each one; `ViewLocator` resolves each page ViewModel to its View by naming convention.
+
+Pages never navigate themselves — they raise intent (`PlayRequested`, `BackRequested`, `MenuRequested`) and the shell decides what that means. That keeps navigation rules in one file rather than scattered across screens.
+
+A run is constructed fresh each time **Play** is pressed and disposed when it ends, so settings changed in Options take effect immediately and no timers keep running behind the menu.
 
 Two small adapters are the deliberate exception: `FlagImageLoader` and `AssetCountryData` know about `avares://`, so nothing else has to.
 

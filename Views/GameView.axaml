@@ -154,7 +154,7 @@
                        TextWrapping="Wrap"
                        TextAlignment="Center"
                        Margin="0,2,0,0" />
-            <TextBlock Text="Press 1–6 to answer with the keyboard"
+            <TextBlock Text="Press 1–6 to answer  ·  Esc for the menu"
                        HorizontalAlignment="Center"
                        FontSize="12"
                        Opacity="0.35"
@@ -227,11 +227,18 @@
                        FontWeight="SemiBold"
                        Foreground="#F1C40F"
                        Margin="0,6,0,0" />
-            <Button Content="Play again"
-                    Command="{Binding StartNewGameCommand}"
-                    HorizontalAlignment="Center"
-                    Margin="0,16,0,0"
-                    Padding="24,10" />
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Spacing="12"
+                        Margin="0,16,0,0">
+                <Button Content="Play again"
+                        Command="{Binding StartNewGameCommand}"
+                        Padding="24,10"
+                        IsDefault="True" />
+                <Button Content="Main menu"
+                        Command="{Binding ReturnToMenuCommand}"
+                        Padding="24,10" />
+            </StackPanel>
         </StackPanel>
         
         <TextBlock Grid.Row="4"
