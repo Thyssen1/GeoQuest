@@ -4,6 +4,9 @@ namespace GeoQuest.Tests;
 
 public class GameRulesTests
 {
+    /// <summary>The classic run, which most of these rules were first written against.</summary>
+    private static readonly DifficultyProfile Normal = DifficultyProfile.Normal;
+
     [Theory]
     [InlineData(0, 3)]
     [InlineData(2, 3)]
@@ -15,7 +18,7 @@ public class GameRulesTests
     [InlineData(500, 6)]
     public void OptionCount_follows_the_documented_ramp(int correct, int expected)
     {
-        Assert.Equal(expected, GameRules.OptionCountFor(correct));
+        Assert.Equal(expected, GameRules.OptionCountFor(correct, Normal));
     }
 
     [Fact]
@@ -24,7 +27,7 @@ public class GameRulesTests
         for (var i = 1; i <= 300; i++)
         {
             Assert.True(
-                GameRules.OptionCountFor(i) >= GameRules.OptionCountFor(i - 1),
+                GameRules.OptionCountFor(i, Normal) >= GameRules.OptionCountFor(i - 1, Normal),
                 $"option count dropped between {i - 1} and {i} correct answers");
         }
     }
@@ -34,7 +37,7 @@ public class GameRulesTests
     {
         for (var i = 0; i <= 300; i++)
         {
-            var count = GameRules.OptionCountFor(i);
+            var count = GameRules.OptionCountFor(i, Normal);
             Assert.InRange(count, GameRules.MinOptions, GameRules.MaxOptions);
         }
     }
@@ -42,13 +45,13 @@ public class GameRulesTests
     [Fact]
     public void OptionCount_rejects_a_negative_answer_count()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => GameRules.OptionCountFor(-1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => GameRules.OptionCountFor(-1, Normal));
     }
 
     [Fact]
     public void Round_starts_at_twelve_seconds()
     {
-        Assert.Equal(TimeSpan.FromSeconds(12), GameRules.RoundDurationFor(0));
+        Assert.Equal(TimeSpan.FromSeconds(12), GameRules.RoundDurationFor(0, Normal));
     }
 
     [Fact]
@@ -56,7 +59,7 @@ public class GameRulesTests
     {
         for (var i = 0; i <= 300; i++)
         {
-            Assert.True(GameRules.RoundDurationFor(i) >= TimeSpan.FromSeconds(7));
+            Assert.True(GameRules.RoundDurationFor(i, Normal) >= TimeSpan.FromSeconds(7));
         }
     }
 
@@ -65,7 +68,7 @@ public class GameRulesTests
     {
         for (var i = 1; i <= 300; i++)
         {
-            Assert.True(GameRules.RoundDurationFor(i) <= GameRules.RoundDurationFor(i - 1));
+            Assert.True(GameRules.RoundDurationFor(i, Normal) <= GameRules.RoundDurationFor(i - 1, Normal));
         }
     }
 
@@ -123,15 +126,15 @@ public class GameRulesTests
     [Fact]
     public void A_lucky_roll_wins_a_life()
     {
-        Assert.True(GameRules.AwardsBonusLife(lives: 1, roll: 0d));
+        Assert.True(GameRules.AwardsBonusLife(lives: 1, roll: 0d, chance: GameRules.BonusLifeChance));
     }
 
     [Fact]
     public void An_ordinary_roll_wins_nothing()
     {
         // The boundary belongs to "no life": the chance is the share of rolls below it.
-        Assert.False(GameRules.AwardsBonusLife(lives: 1, roll: GameRules.BonusLifeChance));
-        Assert.False(GameRules.AwardsBonusLife(lives: 1, roll: 0.99d));
+        Assert.False(GameRules.AwardsBonusLife(lives: 1, roll: GameRules.BonusLifeChance, chance: GameRules.BonusLifeChance));
+        Assert.False(GameRules.AwardsBonusLife(lives: 1, roll: 0.99d, chance: GameRules.BonusLifeChance));
     }
 
     [Fact]
@@ -139,17 +142,17 @@ public class GameRulesTests
     {
         for (var lives = 0; lives < GameRules.MaxLives; lives++)
         {
-            Assert.True(GameRules.AwardsBonusLife(lives, roll: 0d), $"no life offered on {lives}");
+            Assert.True(GameRules.AwardsBonusLife(lives, roll: 0d, chance: GameRules.BonusLifeChance), $"no life offered on {lives}");
         }
     }
 
     [Fact]
     public void Lives_never_grow_past_the_cap()
     {
-        Assert.False(GameRules.AwardsBonusLife(GameRules.MaxLives, roll: 0d));
+        Assert.False(GameRules.AwardsBonusLife(GameRules.MaxLives, roll: 0d, chance: GameRules.BonusLifeChance));
 
         // Defensive: a hand-edited save could in principle start a run above the cap.
-        Assert.False(GameRules.AwardsBonusLife(GameRules.MaxLives + 3, roll: 0d));
+        Assert.False(GameRules.AwardsBonusLife(GameRules.MaxLives + 3, roll: 0d, chance: GameRules.BonusLifeChance));
     }
 
     [Fact]
@@ -164,17 +167,6 @@ public class GameRulesTests
         // Otherwise the kindest starting-lives setting would begin a run already able
         // to hold more than the rules allow, or unable to ever win one.
         Assert.Equal(GameRules.MaxLives, GameSettings.AllowedLives.Max());
-    }
-
-    [Fact]
-    public void The_normal_profile_reproduces_the_default_ramp_exactly()
-    {
-        // Guards the refactor: adding profiles must not have moved Normal by a single round.
-        for (var i = 0; i <= 300; i++)
-        {
-            Assert.Equal(GameRules.OptionCountFor(i), GameRules.OptionCountFor(i, DifficultyProfile.Normal));
-            Assert.Equal(GameRules.RoundDurationFor(i), GameRules.RoundDurationFor(i, DifficultyProfile.Normal));
-        }
     }
 
     [Theory]
