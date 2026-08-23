@@ -1,0 +1,8 @@
+Changelog
+
+1.1.0
+- Added sound effects
+- Added learning and hard mode in addition to normal mode
+
+1.0.0
+- First release

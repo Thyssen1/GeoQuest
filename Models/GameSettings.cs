@@ -8,18 +8,36 @@ namespace GeoQuest.Models;
 /// </summary>
 public sealed record GameSettings
 {
-    /// <summary>Lives a run starts with. Constrained to <see cref="AllowedLives"/>.</summary>
     [JsonPropertyName("startingLives")]
     public int StartingLives { get; init; } = DefaultStartingLives;
+    
+    [JsonPropertyName("soundEnabled")]
+    public bool SoundEnabled { get; init; } = true;
+    
+    [JsonPropertyName("mode")]
+    [JsonConverter(typeof(JsonStringEnumConverter<GameMode>))]
+    public GameMode Mode { get; init; } = GameMode.Normal;
 
     public const int DefaultStartingLives = 3;
-
-    /// <summary>The choices offered in Options, from a gentle run to a single mistake.</summary>
     public static readonly int[] AllowedLives = [1, 3, 5];
 
     /// <summary>Clamps anything unexpected from disk back to a playable value.</summary>
-    public GameSettings Sanitised() =>
-        System.Array.IndexOf(AllowedLives, StartingLives) >= 0
-            ? this
-            : this with { StartingLives = DefaultStartingLives };
+    public GameSettings Sanitised()
+    {
+        var sanitised = this;
+
+        if (System.Array.IndexOf(AllowedLives, StartingLives) < 0)
+        {
+            sanitised = sanitised with { StartingLives = DefaultStartingLives };
+        }
+
+        // A number outside the enum survives deserialisation; a mode that does not exist
+        // would leave Play with nothing to preselect.
+        if (!System.Enum.IsDefined(Mode))
+        {
+            sanitised = sanitised with { Mode = GameMode.Normal };
+        }
+
+        return sanitised;
+    }
 }

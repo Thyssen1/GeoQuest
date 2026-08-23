@@ -71,7 +71,7 @@
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         Spacing="2">
-                <TextBlock Text="BEST SCORE"
+                <TextBlock Text="{Binding BestScoreLabel}"
                            FontSize="12"
                            Opacity="0.5"
                            HorizontalAlignment="Center" />

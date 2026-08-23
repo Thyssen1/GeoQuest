@@ -116,11 +116,37 @@
                 <TextBlock Classes="statValue" Text="{Binding CorrectAnswers}" />
             </StackPanel>
 
-            <StackPanel Grid.Column="5" HorizontalAlignment="Right">
-                <TextBlock Classes="stat" Text="LIVES" HorizontalAlignment="Right" />
+            <StackPanel Grid.Column="4"
+                        HorizontalAlignment="Center"
+                        IsVisible="{Binding ShowsMastery}">
+                <TextBlock Classes="stat" Text="MASTERED" HorizontalAlignment="Center" />
                 <TextBlock Classes="statValue"
-                           Text="{Binding LivesText}"
-                           Foreground="#E74C3C"
+                           Text="{Binding MasteryText}"
+                           Foreground="#2ECC71"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Lives and the round count never both apply: a mode either ends when the
+                 lives run out or after a set number of rounds. They share the column. -->
+            <StackPanel Grid.Column="5" HorizontalAlignment="Right" IsVisible="{Binding HasLives}">
+                <TextBlock Classes="stat" Text="LIVES" HorizontalAlignment="Right" />
+                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                    <!-- Only up while the round that won it is on screen. -->
+                    <TextBlock Classes="statValue"
+                               Text="+1"
+                               Foreground="#2ECC71"
+                               IsVisible="{Binding HasWonLife}"
+                               VerticalAlignment="Center" />
+                    <TextBlock Classes="statValue"
+                               Text="{Binding LivesText}"
+                               Foreground="#E74C3C" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Grid.Column="5" HorizontalAlignment="Right" IsVisible="{Binding IsBounded}">
+                <TextBlock Classes="stat" Text="ROUND" HorizontalAlignment="Right" />
+                <TextBlock Classes="statValue"
+                           Text="{Binding RoundText}"
                            HorizontalAlignment="Right" />
             </StackPanel>
         </Grid>
@@ -154,7 +180,7 @@
                        TextWrapping="Wrap"
                        TextAlignment="Center"
                        Margin="0,2,0,0" />
-            <TextBlock Text="Press 1–6 to answer  ·  Esc for the menu"
+            <TextBlock Text="{Binding AnswerKeysText}"
                        HorizontalAlignment="Center"
                        FontSize="12"
                        Opacity="0.35"
@@ -209,7 +235,7 @@
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     Spacing="8">
-            <TextBlock Text="Run over"
+            <TextBlock Text="{Binding EndTitle}"
                        FontSize="30"
                        FontWeight="Bold"
                        HorizontalAlignment="Center" />
@@ -220,6 +246,11 @@
             <TextBlock Text="{Binding ResultMessage}"
                        HorizontalAlignment="Center"
                        Opacity="0.6" />
+            <TextBlock Text="{Binding MasteryDetail}"
+                       IsVisible="{Binding ShowsMastery}"
+                       HorizontalAlignment="Center"
+                       Foreground="#2ECC71"
+                       Opacity="0.7" />
             <TextBlock Text="🏆 New best score!"
                        IsVisible="{Binding IsNewBest}"
                        HorizontalAlignment="Center"

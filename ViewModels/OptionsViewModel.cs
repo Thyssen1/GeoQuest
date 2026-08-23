@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GeoQuest.Models;
@@ -17,6 +18,10 @@ public partial class OptionsViewModel : ViewModelBase
     private readonly ISettingsStore _settings;
     private readonly IScoreStore _scores;
 
+    /// <summary>The stored settings as they currently stand, so saving one setting never
+    /// writes over another that this screen happens not to show.</summary>
+    private GameSettings _current;
+
     /// <summary>Suppresses saving while the initial value is being applied to the UI.</summary>
     private bool _loading;
 
@@ -24,7 +29,11 @@ public partial class OptionsViewModel : ViewModelBase
     private int _startingLives;
 
     [ObservableProperty]
-    private int _bestScore;
+    private bool _soundEnabled;
+
+    /// <summary>True when any mode has a score to lose. The chooser shows the numbers.</summary>
+    [ObservableProperty]
+    private bool _hasBestScore;
 
     /// <summary>Drives the two-step confirmation on the destructive reset.</summary>
     [ObservableProperty]
@@ -38,11 +47,14 @@ public partial class OptionsViewModel : ViewModelBase
         _settings = settings;
         _scores = scores;
 
+        _current = settings.Load().Sanitised();
+
         _loading = true;
-        StartingLives = settings.Load().Sanitised().StartingLives;
+        StartingLives = _current.StartingLives;
+        SoundEnabled = _current.SoundEnabled;
         _loading = false;
 
-        BestScore = scores.LoadBestScore();
+        HasBestScore = AnyScoreRecorded(scores);
     }
 
     public event EventHandler? BackRequested;
@@ -72,8 +84,6 @@ public partial class OptionsViewModel : ViewModelBase
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "GeoQuest");
 
-    public bool HasBestScore => BestScore > 0;
-
     partial void OnStartingLivesChanged(int value)
     {
         OnPropertyChanged(nameof(IsOneLife));
@@ -85,10 +95,27 @@ public partial class OptionsViewModel : ViewModelBase
             return;
         }
 
-        _settings.Save(new GameSettings { StartingLives = value });
+        Save(_current with { StartingLives = value });
     }
 
-    partial void OnBestScoreChanged(int value) => OnPropertyChanged(nameof(HasBestScore));
+    partial void OnSoundEnabledChanged(bool value)
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        Save(_current with { SoundEnabled = value });
+    }
+
+    private void Save(GameSettings settings)
+    {
+        _current = settings;
+        _settings.Save(settings);
+    }
+
+    private static bool AnyScoreRecorded(IScoreStore scores) =>
+        Enum.GetValues<GameMode>().Any(mode => scores.LoadBestScore(mode) > 0);
 
     [RelayCommand]
     private void BeginResetScore() => IsConfirmingReset = true;
@@ -99,8 +126,9 @@ public partial class OptionsViewModel : ViewModelBase
     [RelayCommand]
     private void ConfirmResetScore()
     {
-        _scores.SaveBestScore(0);
-        BestScore = 0;
+        _scores.ClearBestScores();
+
+        HasBestScore = false;
         IsConfirmingReset = false;
     }
 

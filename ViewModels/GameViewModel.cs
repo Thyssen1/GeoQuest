@@ -26,7 +26,10 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     private readonly IQuestionGenerator _generator;
     private readonly IFlagImageLoader _images;
     private readonly IScoreStore _scores;
-    private readonly int _startingLives;
+    private readonly DifficultyProfile _profile;
+    private readonly PlayerHistory _history;
+    private readonly ISoundPlayer? _sounds;
+    private readonly Random _random;
     private readonly DispatcherTimer _roundTimer;
     private readonly DispatcherTimer _revealTimer;
     private readonly bool _isDesignMode;
@@ -65,6 +68,7 @@ public partial class GameViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(GridColumns))]
+    [NotifyPropertyChangedFor(nameof(AnswerKeysText))]
     private int _optionCount = GameRules.MinOptions;
 
     [ObservableProperty]
@@ -87,15 +91,26 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private string _resultMessage = string.Empty;
 
+    /// <summary>True for the round in which a life was won, so the scoreboard can say so.</summary>
+    [ObservableProperty]
+    private bool _hasWonLife;
+
+    /// <summary>Rounds started in this run, including the one on screen.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RoundText))]
+    private int _roundsPlayed;
+
     /// <summary>Raised when the player asks to leave the run and return to the menu.</summary>
     public event EventHandler? MenuRequested;
 
-    public GameViewModel(ICountryRepository repository, IFlagImageLoader images, IScoreStore scores, GameSettings? settings = null)
-        : this(new RandomQuestionGenerator(repository), images, scores, settings)
-    {
-    }
-
-    public GameViewModel(IQuestionGenerator generator, IFlagImageLoader images, IScoreStore scores, GameSettings? settings = null)
+    public GameViewModel(
+        IQuestionGenerator generator,
+        IFlagImageLoader images,
+        IScoreStore scores,
+        DifficultyProfile? profile = null,
+        ISoundPlayer? sounds = null,
+        Random? random = null,
+        PlayerHistory? history = null)
     {
         ArgumentNullException.ThrowIfNull(generator);
         ArgumentNullException.ThrowIfNull(images);
@@ -104,7 +119,13 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         _generator = generator;
         _images = images;
         _scores = scores;
-        _startingLives = (settings ?? new GameSettings()).Sanitised().StartingLives;
+
+        _profile = profile ?? DifficultyProfile.Normal;
+        _history = history ?? new PlayerHistory();
+
+        // Muting happens where the run is composed: a muted game is simply given no player.
+        _sounds = sounds;
+        _random = random ?? Random.Shared;
         _isDesignMode = Design.IsDesignMode;
 
         _roundTimer = new DispatcherTimer { Interval = TickInterval };
@@ -113,7 +134,7 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         _revealTimer = new DispatcherTimer { Interval = RevealDelay };
         _revealTimer.Tick += OnRevealElapsed;
 
-        BestScore = _scores.LoadBestScore();
+        BestScore = _scores.LoadBestScore(_profile.Mode);
 
         StartNewGame();
     }
@@ -121,6 +142,28 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     public ObservableCollection<FlagOptionViewModel> Options { get; } = [];
 
     public string LivesText => string.Concat(Enumerable.Repeat("♥", Math.Max(0, Lives)));
+
+    /// <summary>False in a mode that cannot be lost, where the scoreboard hides lives entirely.</summary>
+    public bool HasLives => _profile.HasLives;
+
+    /// <summary>True in a mode that ends after a set number of rounds.</summary>
+    public bool IsBounded => _profile.IsBounded;
+
+    public string RoundText => $"{Math.Min(RoundsPlayed, _profile.RoundLimit)} / {_profile.RoundLimit}";
+
+    /// <summary>A bounded session is finished rather than lost, and should not be told otherwise.</summary>
+    public string EndTitle => _profile.IsBounded ? "Session complete" : "Run over";
+
+    /// <summary>False in Hard, whose board is about the run rather than the long game.</summary>
+    /// <summary>Names the keys that actually work: the grid is not always six wide.</summary>
+    public string AnswerKeysText => $"Press 1–{OptionCount} to answer  ·  Esc for the menu";
+
+    public bool ShowsMastery => _profile.ShowsMastery;
+
+    /// <summary>Share of the pool in the mastered box. Falls as well as rises.</summary>
+    public string MasteryText => $"{_history.MasteryPercent}%";
+
+    public string MasteryDetail => $"{_history.Graduated} / {_history.PoolSize} flags mastered";
 
     /// <summary>
     /// Column count that keeps the grid balanced at each size: 3 and 6 sit in rows of
@@ -142,7 +185,9 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         Streak = 0;
         BestStreak = 0;
         CorrectAnswers = 0;
-        Lives = _startingLives;
+        Lives = _profile.StartingLives;
+        RoundsPlayed = 0;
+        HasWonLife = false;
         IsGameOver = false;
         IsNewBest = false;
         ResultMessage = string.Empty;
@@ -168,7 +213,13 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         _roundTimer.Stop();
         _clock.Stop();
 
-        if (option.Country.Code == _question.Answer.Code)
+        var correct = option.Country.Code == _question.Answer.Code;
+
+        // Recorded before the boxes are read anywhere, and in every mode: mastery is a
+        // claim about what the player knows, not about which mode they picked.
+        Record(correct, LearningRules.IsFast(remaining, _allowed));
+
+        if (correct)
         {
             option.State = OptionState.Correct;
 
@@ -177,7 +228,19 @@ public partial class GameViewModel : ViewModelBase, IDisposable
             CorrectAnswers++;
             AddScore(GameRules.ScoreFor(remaining, _allowed, Streak));
 
-            ResultMessage = Streak > 1 ? $"Correct — {Streak} in a row" : "Correct";
+            if (GameRules.AwardsBonusLife(Lives, _random.NextDouble(), _profile.BonusLifeChance))
+            {
+                Lives++;
+                HasWonLife = true;
+
+                ResultMessage = "Correct — extra life!";
+                Play(GameSound.BonusLife);
+            }
+            else
+            {
+                ResultMessage = Streak > 1 ? $"Correct — {Streak} in a row" : "Correct";
+                Play(GameSound.Correct);
+            }
         }
         else
         {
@@ -185,8 +248,9 @@ public partial class GameViewModel : ViewModelBase, IDisposable
             RevealAnswer();
 
             Streak = 0;
-            Lives--;
+            LoseLife();
             ResultMessage = $"That was {option.Country.Name}";
+            Play(GameSound.Wrong);
         }
 
         BeginReveal();
@@ -232,6 +296,39 @@ public partial class GameViewModel : ViewModelBase, IDisposable
 
     private bool CanSelect(FlagOptionViewModel? option) => !IsRevealing && !IsGameOver;
 
+    /// <summary>Files the round's outcome against the flag that was the answer.</summary>
+    private void Record(bool correct, bool fast)
+    {
+        if (_question is null)
+        {
+            return;
+        }
+
+        if (_history.Record(_question.Answer.Code, correct, fast))
+        {
+            OnPropertyChanged(nameof(MasteryText));
+            OnPropertyChanged(nameof(MasteryDetail));
+        }
+    }
+
+    /// <summary>Costs a life, in the modes that have them.</summary>
+    private void LoseLife()
+    {
+        if (_profile.HasLives)
+        {
+            Lives--;
+        }
+    }
+
+    /// <summary>Plays a sound, unless this is the previewer or the run was given no player.</summary>
+    private void Play(GameSound sound)
+    {
+        if (!_isDesignMode)
+        {
+            _sounds?.Play(sound);
+        }
+    }
+
     private void AddScore(int points)
     {
         Score += points;
@@ -246,13 +343,14 @@ public partial class GameViewModel : ViewModelBase, IDisposable
 
         // Persisted the moment the record is beaten, so closing the app mid-run
         // does not throw the score away.
-        _scores.SaveBestScore(BestScore);
+        _scores.SaveBestScore(_profile.Mode, BestScore);
     }
 
     private void StartRound()
     {
-        OptionCount = GameRules.OptionCountFor(CorrectAnswers);
-        _allowed = GameRules.RoundDurationFor(CorrectAnswers);
+        OptionCount = GameRules.OptionCountFor(CorrectAnswers, _profile);
+        _allowed = GameRules.RoundDurationFor(CorrectAnswers, _profile);
+        RoundsPlayed++;
 
         _question = _generator.Next(OptionCount);
         Prompt = _question.Answer.Name;
@@ -260,6 +358,7 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         // The reveal delay has already given the player time to read the previous
         // result; carrying it into a live round just reads as stale feedback.
         ResultMessage = string.Empty;
+        HasWonLife = false;
 
         Options.Clear();
         foreach (var country in _question.Options)
@@ -296,9 +395,13 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         _clock.Stop();
 
         RevealAnswer();
+
+        Record(correct: false, fast: false);
+
         Streak = 0;
-        Lives--;
+        LoseLife();
         ResultMessage = "Out of time";
+        Play(GameSound.Wrong);
 
         BeginReveal();
     }
@@ -316,7 +419,13 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     {
         _revealTimer.Stop();
 
-        if (Lives <= 0)
+        if (_profile.HasLives && Lives <= 0)
+        {
+            EndGame();
+            return;
+        }
+
+        if (_profile.IsBounded && RoundsPlayed >= _profile.RoundLimit)
         {
             EndGame();
             return;

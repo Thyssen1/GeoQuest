@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GeoQuest.Models;
 using GeoQuest.Services;
 
 namespace GeoQuest.ViewModels;
@@ -13,15 +14,23 @@ namespace GeoQuest.ViewModels;
 public partial class MenuViewModel : ViewModelBase
 {
     private readonly IScoreStore _scores;
+    private readonly ISettingsStore _settings;
 
     [ObservableProperty]
     private int _bestScore;
 
-    public MenuViewModel(IScoreStore scores)
+    /// <summary>Names the mode the score belongs to; three modes make a bare "BEST" ambiguous.</summary>
+    [ObservableProperty]
+    private string _bestScoreLabel = string.Empty;
+
+    public MenuViewModel(IScoreStore scores, ISettingsStore settings)
     {
         ArgumentNullException.ThrowIfNull(scores);
+        ArgumentNullException.ThrowIfNull(settings);
 
         _scores = scores;
+        _settings = settings;
+
         Refresh();
     }
 
@@ -36,10 +45,17 @@ public partial class MenuViewModel : ViewModelBase
 
     public bool HasBestScore => BestScore > 0;
 
-    /// <summary>Re-reads the score, so returning from a run or from Options shows the current value.</summary>
+    /// <summary>
+    /// Re-reads the score, so returning from a run or from Options shows the current value.
+    /// The mode shown is the one last played, which is the score the player is chasing.
+    /// </summary>
     public void Refresh()
     {
-        BestScore = _scores.LoadBestScore();
+        var mode = _settings.Load().Sanitised().Mode;
+
+        BestScore = _scores.LoadBestScore(mode);
+        BestScoreLabel = $"BEST — {mode.ToString().ToUpperInvariant()}";
+
         OnPropertyChanged(nameof(HasBestScore));
     }
 

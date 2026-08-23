@@ -1,14 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using GeoQuest.Models;
 
 namespace GeoQuest.Services;
 
 /// <summary>
-/// Stores the best score as a small JSON file under the user's application data
-/// directory. <see cref="Environment.SpecialFolder.ApplicationData"/> resolves to a
-/// writable per-user location on Windows, macOS and Linux alike, so this carries no
-/// desktop-only assumption and will keep working when the project targets mobile.
+/// Stores the best score per mode as a small JSON file under the user's application data
 /// </summary>
 public sealed class FileScoreStore : IScoreStore
 {
@@ -25,28 +25,60 @@ public sealed class FileScoreStore : IScoreStore
             FileName);
     }
 
-    public int LoadBestScore()
+    public int LoadBestScore(GameMode mode) => Read().GetValueOrDefault(mode.ToString());
+
+    public void SaveBestScore(GameMode mode, int score)
     {
+        var scores = Read();
+        scores[mode.ToString()] = Math.Max(0, score);
+
+        Write(scores);
+    }
+
+    public void ClearBestScores() => Write(new Dictionary<string, int>());
+    
+    private Dictionary<string, int> Read()
+    {
+        var scores = new Dictionary<string, int>(StringComparer.Ordinal);
+
         try
         {
             if (!File.Exists(_path))
             {
-                return 0;
+                return scores;
             }
 
             var record = JsonSerializer.Deserialize<PlayerRecord>(File.ReadAllText(_path));
 
-            // A negative or absent value is treated as "no score yet" rather than trusted.
-            return Math.Max(0, record?.BestScore ?? 0);
+            if (record is null)
+            {
+                return scores;
+            }
+
+            foreach (var (name, score) in record.BestScores ?? new Dictionary<string, int>())
+            {
+                if (Enum.TryParse<GameMode>(name, out var mode))
+                {
+                    scores[mode.ToString()] = Math.Max(0, score);
+                }
+            }
+
+            if (!scores.ContainsKey(nameof(GameMode.Normal)) && record.BestScore is int legacy)
+            {
+                scores[nameof(GameMode.Normal)] = Math.Max(0, legacy);
+            }
+
+            return scores;
         }
         catch (Exception)
         {
             // Corrupt or unreadable file: start the player from zero rather than crash.
-            return 0;
+            scores.Clear();
+            return scores;
         }
     }
 
-    public void SaveBestScore(int score)
+    private void Write(Dictionary<string, int> scores)
     {
         try
         {
@@ -57,7 +89,7 @@ public sealed class FileScoreStore : IScoreStore
                 Directory.CreateDirectory(directory);
             }
 
-            File.WriteAllText(_path, JsonSerializer.Serialize(new PlayerRecord { BestScore = score }));
+            File.WriteAllText(_path, JsonSerializer.Serialize(new PlayerRecord { BestScores = scores }));
         }
         catch (Exception)
         {
@@ -67,6 +99,10 @@ public sealed class FileScoreStore : IScoreStore
 
     private sealed record PlayerRecord
     {
-        public int BestScore { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? BestScore { get; init; }
+
+        [JsonPropertyName("bestScores")]
+        public Dictionary<string, int>? BestScores { get; init; }
     }
 }

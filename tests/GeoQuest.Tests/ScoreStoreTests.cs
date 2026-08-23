@@ -1,3 +1,4 @@
+using GeoQuest.Models;
 using GeoQuest.Services;
 
 namespace GeoQuest.Tests;
@@ -14,7 +15,7 @@ public class ScoreStoreTests : IDisposable
     {
         var store = new FileScoreStore(PathFor("absent.json"));
 
-        Assert.Equal(0, store.LoadBestScore());
+        Assert.Equal(0, store.LoadBestScore(GameMode.Normal));
     }
 
     [Fact]
@@ -22,9 +23,9 @@ public class ScoreStoreTests : IDisposable
     {
         var path = PathFor("scores.json");
 
-        new FileScoreStore(path).SaveBestScore(1234);
+        new FileScoreStore(path).SaveBestScore(GameMode.Normal, 1234);
 
-        Assert.Equal(1234, new FileScoreStore(path).LoadBestScore());
+        Assert.Equal(1234, new FileScoreStore(path).LoadBestScore(GameMode.Normal));
     }
 
     [Fact]
@@ -32,7 +33,7 @@ public class ScoreStoreTests : IDisposable
     {
         var path = Path.Combine(_directory, "nested", "deeper", "scores.json");
 
-        new FileScoreStore(path).SaveBestScore(7);
+        new FileScoreStore(path).SaveBestScore(GameMode.Normal, 7);
 
         Assert.True(File.Exists(path));
     }
@@ -44,7 +45,7 @@ public class ScoreStoreTests : IDisposable
         Directory.CreateDirectory(_directory);
         File.WriteAllText(path, "this is not json");
 
-        Assert.Equal(0, new FileScoreStore(path).LoadBestScore());
+        Assert.Equal(0, new FileScoreStore(path).LoadBestScore(GameMode.Normal));
     }
 
     [Fact]
@@ -54,7 +55,7 @@ public class ScoreStoreTests : IDisposable
         Directory.CreateDirectory(_directory);
         File.WriteAllText(path, """{"BestScore":-500}""");
 
-        Assert.Equal(0, new FileScoreStore(path).LoadBestScore());
+        Assert.Equal(0, new FileScoreStore(path).LoadBestScore(GameMode.Normal));
     }
 
     [Fact]
@@ -63,9 +64,68 @@ public class ScoreStoreTests : IDisposable
         // Losing a high score must never interrupt a run in progress.
         var store = new FileScoreStore(Path.Combine(_directory, "\0invalid", "scores.json"));
 
-        var exception = Record.Exception(() => store.SaveBestScore(42));
+        var exception = Record.Exception(() => store.SaveBestScore(GameMode.Normal, 42));
 
         Assert.Null(exception);
+    }
+
+    [Fact]
+    public void Each_mode_keeps_its_own_best()
+    {
+        var path = PathFor("modes.json");
+        var store = new FileScoreStore(path);
+
+        store.SaveBestScore(GameMode.Normal, 2400);
+        store.SaveBestScore(GameMode.Hard, 900);
+
+        Assert.Equal(2400, store.LoadBestScore(GameMode.Normal));
+        Assert.Equal(900, store.LoadBestScore(GameMode.Hard));
+        Assert.Equal(0, store.LoadBestScore(GameMode.Learning));
+    }
+
+    [Fact]
+    public void A_file_written_before_modes_existed_reads_as_the_normal_best()
+    {
+        var path = PathFor("legacy.json");
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(path, """{"BestScore":2376}""");
+
+        var store = new FileScoreStore(path);
+
+        Assert.Equal(2376, store.LoadBestScore(GameMode.Normal));
+        Assert.Equal(0, store.LoadBestScore(GameMode.Hard));
+    }
+
+    [Fact]
+    public void Recording_a_new_mode_does_not_discard_the_legacy_score()
+    {
+        // The upgrade path everyone with a saved score will take: the first Hard run must
+        // not cost them the Normal best they arrived with.
+        var path = PathFor("upgrade.json");
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(path, """{"BestScore":2376}""");
+
+        new FileScoreStore(path).SaveBestScore(GameMode.Hard, 40);
+
+        var reloaded = new FileScoreStore(path);
+
+        Assert.Equal(2376, reloaded.LoadBestScore(GameMode.Normal));
+        Assert.Equal(40, reloaded.LoadBestScore(GameMode.Hard));
+    }
+
+    [Fact]
+    public void Resetting_clears_every_mode()
+    {
+        var path = PathFor("reset.json");
+        var store = new FileScoreStore(path);
+
+        store.SaveBestScore(GameMode.Normal, 100);
+        store.SaveBestScore(GameMode.Learning, 200);
+        store.SaveBestScore(GameMode.Hard, 300);
+
+        store.ClearBestScores();
+
+        Assert.All(Enum.GetValues<GameMode>(), mode => Assert.Equal(0, store.LoadBestScore(mode)));
     }
 
     public void Dispose()

@@ -47,26 +47,11 @@ public sealed class RandomQuestionGenerator : IQuestionGenerator
         ArgumentOutOfRangeException.ThrowIfGreaterThan(optionCount, _pool.Count);
 
         var answer = PickAnswer();
-        var options = new List<Country>(optionCount) { answer };
-
-        // Reservoir of everything the answer could be confused with this round.
-        var candidates = _pool.Where(c => c.Code != answer.Code).ToArray();
-
-        // Partial Fisher-Yates: we only need the first (optionCount - 1) of the shuffle.
-        var needed = optionCount - 1;
-        for (var i = 0; i < needed; i++)
-        {
-            var j = _random.Next(i, candidates.Length);
-            (candidates[i], candidates[j]) = (candidates[j], candidates[i]);
-            options.Add(candidates[i]);
-        }
-
-        var ordered = options.ToArray();
-        _random.Shuffle(ordered);
+        var question = QuestionBuilder.Build(answer, _pool, optionCount, _random);
 
         Remember(answer);
 
-        return new FlagQuestion { Answer = answer, Options = ordered };
+        return question;
     }
 
     private Country PickAnswer()

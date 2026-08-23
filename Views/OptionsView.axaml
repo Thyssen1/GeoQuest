@@ -44,7 +44,7 @@
                         <StackPanel Grid.Column="0" Margin="0,0,16,0">
                             <TextBlock Classes="settingName" Text="Starting lives" />
                             <TextBlock Classes="settingHint"
-                                       Text="How many wrong answers or timeouts a run survives. Applies to your next run." />
+                                       Text="How many wrong answers or timeouts a Normal run survives. Applies to your next run — Hard mode always gives three." />
                         </StackPanel>
 
                         <StackPanel Grid.Column="1"
@@ -58,22 +58,34 @@
                     </Grid>
                 </Border>
 
+                <!-- Sound -->
+                <Border Classes="settingRow">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                            <TextBlock Classes="settingName" Text="Sound" />
+                            <TextBlock Classes="settingHint"
+                                       Text="A chime on a right answer, a low tone on a wrong one, and a flourish when a round hands you a life back." />
+                        </StackPanel>
+
+                        <ToggleSwitch Grid.Column="1"
+                                      IsChecked="{Binding SoundEnabled}"
+                                      OnContent="On"
+                                      OffContent="Off"
+                                      VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
                 <!-- Best score -->
                 <Border Classes="settingRow">
                     <StackPanel Spacing="12">
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                                <TextBlock Classes="settingName" Text="Best score" />
+                                <TextBlock Classes="settingName" Text="Best scores" />
                                 <TextBlock Classes="settingHint"
-                                           Text="Your highest score so far. Resetting cannot be undone." />
+                                           Text="Each mode keeps its own best, shown when you pick a mode. Resetting clears all three and cannot be undone." />
                             </StackPanel>
 
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding BestScore}"
-                                           FontSize="22"
-                                           FontWeight="SemiBold"
-                                           Foreground="#F1C40F"
-                                           VerticalAlignment="Center" />
                                 <Button Content="Reset"
                                         Command="{Binding BeginResetScoreCommand}"
                                         IsEnabled="{Binding HasBestScore}"
@@ -88,7 +100,7 @@
                                 Padding="14">
                             <Grid ColumnDefinitions="*,Auto,Auto">
                                 <TextBlock Grid.Column="0"
-                                           Text="Erase your best score permanently?"
+                                           Text="Erase your best score in every mode permanently?"
                                            VerticalAlignment="Center"
                                            TextWrapping="Wrap"
                                            Margin="0,0,12,0" />
