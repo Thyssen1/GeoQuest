@@ -24,6 +24,9 @@ jobs:
     outputs:
       version: ${{ steps.resolve.outputs.version }}
     steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
       - name: Resolve version
         id: resolve
         shell: bash
@@ -42,6 +45,42 @@ jobs:
 
           echo "Building version $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # A release that does not say what changed is one nobody can evaluate. The changelog
+      # has to name the version being built before that version is allowed to ship.
+      - name: Require a changelog entry
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          VERSION="${{ steps.resolve.outputs.version }}"
+          FILE=ChangeLog.txt
+
+          if [ ! -f "$FILE" ]; then
+            echo "::error::$FILE is missing. A release must document what changed."
+            exit 1
+          fi
+
+          # Entries are headed by a bare version on its own line. Tolerant of CRLF and of
+          # trailing spaces, so neither can fail a release that is genuinely documented.
+          NORMALISED=$(sed 's/\r$//; s/[[:space:]]*$//' "$FILE")
+
+          if printf '%s\n' "$NORMALISED" | grep -qxF "$VERSION"; then
+            echo "$FILE documents $VERSION."
+            exit 0
+          fi
+
+          LATEST=$(printf '%s\n' "$NORMALISED" | grep -m1 -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true)
+          MESSAGE="$FILE has no entry for $VERSION (newest entry: ${LATEST:-none}). Add a $VERSION section before releasing."
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "::error::$MESSAGE"
+            exit 1
+          fi
+
+          # A rehearsal exists to exercise the build and defaults to a version that will
+          # never appear in the changelog, so it reports the problem rather than blocking.
+          echo "::warning::$MESSAGE"
 
   build:
     name: Build ${{ matrix.label }}

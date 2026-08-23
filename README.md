@@ -162,21 +162,29 @@ Two things stand in the way, both flagged as `IL2026` at publish time. `System.T
 
 ### Cutting a release
 
-Releases are built by [.github/workflows/release.yml](.github/workflows/release.yml), triggered by pushing a version tag:
+Releases are built by [.github/workflows/release.yml](.github/workflows/release.yml), triggered by pushing a version tag. First document the release in `ChangeLog.txt` — the workflow refuses to build a version the changelog does not mention:
+
+```
+1.1.0
+- Added sound effects
+- Added learning and hard mode in addition to normal mode
+```
+
+Then tag and push:
 
 ```bash
-git tag -a v1.0.0 -m "GeoQuest 1.0.0"
+git tag -a v1.1.0 -m "GeoQuest 1.1.0"
 ```
 
 ```bash
-git push origin v1.0.0
+git push origin v1.1.0
 ```
 
 The workflow runs the test suite on **every** target platform, then builds three artifacts in parallel — Windows x64, macOS arm64 and macOS x64 — with `Version` taken from the tag. It publishes a `SHA256SUMS.txt` covering all of them and creates the GitHub Release with notes generated from the commit history.
 
 To rehearse without tagging, run the workflow manually from the Actions tab. `workflow_dispatch` performs every build and uploads the artifacts, but skips creating a release.
 
-Note that the version must match `major.minor.patch`; the workflow fails fast otherwise rather than producing a mislabelled build.
+Two things fail the build before anything is compiled, rather than producing a release that is wrong: a version that does not match `major.minor.patch`, and a version with no entry in `ChangeLog.txt`. A rehearsal run reports a missing changelog entry as a warning instead of an error, since its default version is never going to be in the file.
 
 ## Tech Stack
 
