@@ -57,11 +57,36 @@ public class DifficultyProfileTests
     }
 
     [Fact]
-    public void Only_normal_hands_out_extra_lives()
+    public void Hard_is_the_only_mode_that_takes_lives_without_ever_giving_one_back()
     {
-        Assert.True(DifficultyProfile.For(GameMode.Normal).BonusLifeChance > 0d);
-        Assert.Equal(0d, DifficultyProfile.For(GameMode.Learning).BonusLifeChance);
-        Assert.Equal(0d, DifficultyProfile.For(GameMode.Hard).BonusLifeChance);
+        Assert.True(DifficultyProfile.Hard.HasLives);
+        Assert.Equal(0d, DifficultyProfile.Hard.BonusLifeChance);
+
+        Assert.True(DifficultyProfile.Normal.BonusLifeChance > 0d);
+        Assert.True(DifficultyProfile.Recall.BonusLifeChance > 0d);
+        Assert.False(DifficultyProfile.Learning.HasLives);
+    }
+
+    [Fact]
+    public void Recall_asks_for_a_name_rather_than_a_pick()
+    {
+        Assert.Equal(RoundInput.Name, DifficultyProfile.Recall.Input);
+
+        Assert.All(new[] { GameMode.Normal, GameMode.Learning, GameMode.Hard }, mode =>
+            Assert.Equal(RoundInput.Grid, DifficultyProfile.For(mode).Input));
+    }
+
+    [Fact]
+    public void Recall_allows_longer_than_pointing_at_a_tile_would()
+    {
+        // Typing a country name is not the same act as clicking one of four pictures.
+        Assert.True(DifficultyProfile.Recall.OpeningSeconds > DifficultyProfile.Normal.OpeningSeconds);
+    }
+
+    [Fact]
+    public void Recall_has_no_grid_to_grow()
+    {
+        Assert.Equal(DifficultyProfile.Recall.OpeningOptions, DifficultyProfile.Recall.MaxOptions);
     }
 
     [Fact]

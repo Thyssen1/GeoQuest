@@ -14,4 +14,7 @@ public enum GameMode
 
     /// <summary>Three lives, no way to earn more, and a grid that opens wider.</summary>
     Hard,
+
+    /// <summary>The question runs the other way: a flag is shown and the country must be named.</summary>
+    Recall,
 }

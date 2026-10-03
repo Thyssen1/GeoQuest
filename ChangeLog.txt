@@ -1,5 +1,10 @@
 Changelog
 
+1.2.0
+- Added recall mode: a flag is shown and you name the country from all 197
+- New look: bright sky theme with tactile buttons, oversized answer feedback and progress on the menu
+- Added a quit button to a run in progress
+
 1.1.0
 - Added sound effects
 - Added learning and hard mode in addition to normal mode

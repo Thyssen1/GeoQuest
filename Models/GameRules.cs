@@ -20,8 +20,6 @@ public static class GameRules
     /// <summary>Correct answers needed to unlock each successive grid size.</summary>
     private static readonly int[] Thresholds = [0, 3, 7, 12];
     
-    private const double MaxRoundSeconds = 12d;
-    private const double MinRoundSeconds = 7d;
     private const int BasePoints = 100;
 
 
@@ -52,7 +50,7 @@ public static class GameRules
         ArgumentNullException.ThrowIfNull(profile);
 
         var extraOptions = OptionCountFor(correctAnswers, profile) - profile.OpeningOptions;
-        var seconds = Math.Max(MinRoundSeconds, MaxRoundSeconds - extraOptions);
+        var seconds = Math.Max(profile.MinimumSeconds, profile.OpeningSeconds - extraOptions);
 
         return TimeSpan.FromSeconds(seconds);
     }

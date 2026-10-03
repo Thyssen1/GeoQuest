@@ -15,21 +15,33 @@ public partial class MenuViewModel : ViewModelBase
 {
     private readonly IScoreStore _scores;
     private readonly ISettingsStore _settings;
+    private readonly PlayerHistory _history;
 
     [ObservableProperty]
     private int _bestScore;
 
-    /// <summary>Names the mode the score belongs to; three modes make a bare "BEST" ambiguous.</summary>
+    /// <summary>Names the mode the score belongs to; four modes make a bare "BEST" ambiguous.</summary>
     [ObservableProperty]
     private string _bestScoreLabel = string.Empty;
 
-    public MenuViewModel(IScoreStore scores, ISettingsStore settings)
+    /// <summary>Lives a run will start with, so the setting is visible before pressing Play.</summary>
+    [ObservableProperty]
+    private string _startingLivesText = string.Empty;
+
+    [ObservableProperty]
+    private string _masteryDetail = string.Empty;
+
+    [ObservableProperty]
+    private int _masteryPercent;
+
+    public MenuViewModel(IScoreStore scores, ISettingsStore settings, PlayerHistory? history = null)
     {
         ArgumentNullException.ThrowIfNull(scores);
         ArgumentNullException.ThrowIfNull(settings);
 
         _scores = scores;
         _settings = settings;
+        _history = history ?? new PlayerHistory();
 
         Refresh();
     }
@@ -51,10 +63,14 @@ public partial class MenuViewModel : ViewModelBase
     /// </summary>
     public void Refresh()
     {
-        var mode = _settings.Load().Sanitised().Mode;
+        var settings = _settings.Load().Sanitised();
 
-        BestScore = _scores.LoadBestScore(mode);
-        BestScoreLabel = $"BEST — {mode.ToString().ToUpperInvariant()}";
+        BestScore = _scores.LoadBestScore(settings.Mode);
+        BestScoreLabel = settings.Mode.ToString().ToUpperInvariant();
+        StartingLivesText = settings.StartingLives.ToString();
+
+        MasteryDetail = $"{_history.Graduated} / {_history.PoolSize}";
+        MasteryPercent = _history.MasteryPercent;
 
         OnPropertyChanged(nameof(HasBestScore));
     }

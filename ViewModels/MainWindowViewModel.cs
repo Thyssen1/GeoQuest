@@ -61,7 +61,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         if (_menu is null)
         {
-            _menu = new MenuViewModel(_scores, _settings);
+            _menu = new MenuViewModel(_scores, _settings, History);
             _menu.PlayRequested += (_, _) => ShowModeSelect();
             _menu.OptionsRequested += (_, _) => ShowOptions();
             _menu.ExitRequested += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
@@ -116,7 +116,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // Muting a run is giving it no sound player at all.
             settings.SoundEnabled ? _sounds : null,
             random: null,
-            history: History);
+            history: History,
+            // Only Recall needs the full name list; the other modes never show it.
+            choices: mode == GameMode.Recall ? AssetCountryData.Instance.QuestionPool : null);
 
         _game.MenuRequested += (_, _) => ShowMenu();
 

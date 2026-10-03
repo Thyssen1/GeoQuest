@@ -1,0 +1,195 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        The look: white cards on a sky gradient, and depth from a solid darker bottom
+        edge rather than a blur. Every raised surface carries one, which is what makes
+        buttons read as pressable; drop it and the whole design goes flat.
+    -->
+    <Styles.Resources>
+
+        <!-- Ground -->
+        <LinearGradientBrush x:Key="SkyBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Color="#7CC9F0" Offset="0" />
+            <GradientStop Color="#A8E0FB" Offset="0.55" />
+            <GradientStop Color="#CFEEFF" Offset="1" />
+        </LinearGradientBrush>
+
+        <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="CardSoftBrush" Color="#F3F9FC" />
+        <SolidColorBrush x:Key="TrackBrush" Color="#E3EEF5" />
+
+        <!-- The shade every raised white surface is edged in -->
+        <SolidColorBrush x:Key="EdgeBrush" Color="#B9D2E2" />
+
+        <!-- Ink -->
+        <SolidColorBrush x:Key="InkBrush" Color="#14415E" />
+        <SolidColorBrush x:Key="InkMutedBrush" Color="#5A7A91" />
+        <SolidColorBrush x:Key="InkFaintBrush" Color="#8CA6B8" />
+        <SolidColorBrush x:Key="OnSkyBrush" Color="#FFFFFF" />
+
+        <!-- Accents, each with the darker shade its edge is drawn in -->
+        <SolidColorBrush x:Key="PlayBrush" Color="#F3564E" />
+        <SolidColorBrush x:Key="PlayEdgeBrush" Color="#C9342D" />
+        <SolidColorBrush x:Key="CorrectBrush" Color="#4CD07A" />
+        <SolidColorBrush x:Key="CorrectEdgeBrush" Color="#2E9E57" />
+        <SolidColorBrush x:Key="ScoreBrush" Color="#FFC83D" />
+        <SolidColorBrush x:Key="ScoreEdgeBrush" Color="#E0A422" />
+        <SolidColorBrush x:Key="ScoreTextBrush" Color="#E8A317" />
+        <SolidColorBrush x:Key="FocusBrush" Color="#3FA9F5" />
+        <SolidColorBrush x:Key="FocusEdgeBrush" Color="#1B6FA8" />
+
+        <!-- Swap this for the embedded Fredoka face once the font ships with the app. -->
+        <FontFamily x:Key="AppFont">Segoe UI Variable Display, Segoe UI, sans-serif</FontFamily>
+    </Styles.Resources>
+
+    <!-- Cards and pills -->
+    <!--
+        Depth is a bottom border inside the rounded shape, never an offset shadow: a shadow
+        keeps its own corner radius and its curves hang out past the face as dark wedges.
+    -->
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{StaticResource CardBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource EdgeBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,5" />
+        <Setter Property="CornerRadius" Value="20" />
+    </Style>
+
+    <Style Selector="Border.pill">
+        <Setter Property="Background" Value="{StaticResource CardBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource EdgeBrush}" />
+        <Setter Property="BorderThickness" Value="0,0,0,3" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Padding" Value="14,7" />
+    </Style>
+
+    <!-- Type -->
+    <Style Selector="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+        <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+    </Style>
+
+    <Style Selector="SelectableTextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+        <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.label">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource InkFaintBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.statValue">
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style Selector="TextBlock.body">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{StaticResource InkMutedBrush}" />
+    </Style>
+
+    <!-- Text that sits on the sky rather than on a card needs its own weight. -->
+    <Style Selector="TextBlock.onSky">
+        <Setter Property="Foreground" Value="{StaticResource OnSkyBrush}" />
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+
+    <!--
+        Buttons. The edge is the button's own background and the face is the content
+        presenter sitting on top of it, inset from the bottom. Drawing the edge as a box
+        shadow instead leaves its rounded corners poking out beside the face.
+        Pressing drops the face onto the edge, so the depth is felt rather than drawn.
+    -->
+    <Style Selector="Button.raised">
+        <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="16" />
+        <Setter Property="Padding" Value="24,11,24,13" />
+        <Setter Property="Background" Value="#B9D2E2" />
+        <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+    </Style>
+
+    <Style Selector="Button.raised /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource CardBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{Binding $parent[Button].CornerRadius}" />
+        <Setter Property="Margin" Value="0,0,0,5" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <ThicknessTransition Property="Margin" Duration="0:0:0.06" />
+            </Transitions>
+        </Setter>
+    </Style>
+
+    <Style Selector="Button.raised:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource CardBrush}" />
+    </Style>
+
+    <Style Selector="Button.raised:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource CardBrush}" />
+        <Setter Property="Margin" Value="0,4,0,1" />
+    </Style>
+
+    <Style Selector="Button.raised:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Opacity" Value="0.5" />
+    </Style>
+
+    <Style Selector="Button.primary">
+        <Setter Property="Background" Value="{StaticResource PlayEdgeBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource OnSkyBrush}" />
+    </Style>
+
+    <Style Selector="Button.primary /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource PlayBrush}" />
+        <Setter Property="Margin" Value="0,0,0,7" />
+    </Style>
+
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#FF6A62" />
+    </Style>
+
+    <Style Selector="Button.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource PlayBrush}" />
+        <Setter Property="Margin" Value="0,5,0,2" />
+    </Style>
+
+    <Style Selector="Button.confirm">
+        <Setter Property="Background" Value="{StaticResource CorrectEdgeBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource OnSkyBrush}" />
+    </Style>
+
+    <Style Selector="Button.confirm /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource CorrectBrush}" />
+        <Setter Property="Margin" Value="0,0,0,5" />
+    </Style>
+
+    <Style Selector="Button.confirm:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#5EDC8B" />
+    </Style>
+
+    <Style Selector="Button.confirm:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource CorrectBrush}" />
+        <Setter Property="Margin" Value="0,4,0,1" />
+    </Style>
+
+    <!-- Progress -->
+    <Style Selector="ProgressBar.clock">
+        <Setter Property="Height" Value="12" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Foreground" Value="{StaticResource CorrectBrush}" />
+        <Setter Property="Background" Value="#8CFFFFFF" />
+    </Style>
+
+    <Style Selector="ProgressBar.meter">
+        <Setter Property="Height" Value="10" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="Foreground" Value="{StaticResource CorrectBrush}" />
+        <Setter Property="Background" Value="{StaticResource TrackBrush}" />
+    </Style>
+
+</Styles>

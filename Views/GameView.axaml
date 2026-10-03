@@ -3,194 +3,219 @@
              xmlns:vm="using:GeoQuest.ViewModels"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="620"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="720"
              x:Class="GeoQuest.Views.GameView"
              x:DataType="vm:GameViewModel">
 
     <UserControl.Styles>
-        <!-- Flags carry true national proportions (Denmark 37:28, the US 19:10), so
-             every cell letterboxes with Stretch="Uniform" rather than filling. -->
-        <!-- Every tile is a fixed 3:2 frame so the grid reads as a uniform row of cards.
-             The flag inside keeps its true proportions and letterboxes, which is why
-             Nepal (0.83:1) and Qatar (2.55:1) sit with visible padding. Greys are used
-             rather than theme colours so the tile reads on both light and dark. -->
-        <Style Selector="Border.option">
-            <Setter Property="BorderThickness" Value="3" />
-            <Setter Property="BorderBrush" Value="#38808080" />
-            <Setter Property="Background" Value="#14808080" />
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
-                    <ThicknessTransition Property="BorderThickness" Duration="0:0:0.18" />
-                </Transitions>
-            </Setter>
-        </Style>
-        
-        <Style Selector="Border.option.correct">
-            <Setter Property="BorderBrush" Value="#2ECC71" />
-            <Setter Property="BorderThickness" Value="12" />
+        <!-- A tile is a white card holding a flag. The flag PNGs are already rendered on
+             a shared 3:2 canvas, so Fill is correct here and letterboxes nothing. -->
+        <!-- The edge is a bottom border, so it follows the corner radius instead of
+             hanging off it the way an offset shadow does. A resolved state swaps that
+             edge for a full ring in its own colour. -->
+        <Style Selector="Border.tile">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="9" />
+            <Setter Property="BorderBrush" Value="{StaticResource EdgeBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,6" />
         </Style>
 
-        <Style Selector="Border.option.wrong">
-            <Setter Property="BorderBrush" Value="#E74C3C" />
-            <Setter Property="BorderThickness" Value="12" />
-        </Style>
-        
-        <Style Selector="Border.option.revealed">
-            <Setter Property="BorderBrush" Value="#2ECC71" />
-            <Setter Property="BorderThickness" Value="12" />
-            <Setter Property="Opacity" Value="0.85" />
+        <Style Selector="Border.tile.correct">
+            <Setter Property="BorderThickness" Value="5,5,5,8" />
+            <Setter Property="BorderBrush" Value="{StaticResource CorrectBrush}" />
+            <Setter Property="Padding" Value="4" />
         </Style>
 
-        <Style Selector="Button.flag">
+        <Style Selector="Border.tile.wrong">
+            <Setter Property="BorderThickness" Value="5,5,5,8" />
+            <Setter Property="BorderBrush" Value="{StaticResource PlayBrush}" />
+            <Setter Property="Padding" Value="4" />
+        </Style>
+
+        <Style Selector="Border.tile.revealed">
+            <Setter Property="BorderThickness" Value="5" />
+            <Setter Property="BorderBrush" Value="{StaticResource CorrectBrush}" />
+            <Setter Property="Padding" Value="4" />
+        </Style>
+
+        <Style Selector="Button.tile">
             <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="10" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="CornerRadius" Value="8" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
         </Style>
-        
-        <Style Selector="Button.flag /template/ ContentPresenter#PART_ContentPresenter">
+
+        <Style Selector="Button.tile /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
         </Style>
 
-        <Style Selector="Button.flag:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button.tile:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="Opacity" Value="1" />
         </Style>
 
-        <Style Selector="Button.flag:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button.tile:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
 
-        <Style Selector="Button.flag:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-        </Style>
-        
-        <Style Selector="Button.flag:pointerover Border.option">
-            <Setter Property="BorderBrush" Value="#5B9DFF" />
+        <Style Selector="Button.tile:pointerover Border.tile">
+            <Setter Property="BorderBrush" Value="{StaticResource FocusBrush}" />
         </Style>
 
-        <Style Selector="TextBlock.stat">
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Opacity" Value="0.6" />
+        <!-- Everything but the answer steps back once the round resolves. -->
+        <Style Selector="Border.tile.dimmed">
+            <Setter Property="Opacity" Value="0.4" />
         </Style>
 
-        <Style Selector="TextBlock.statValue">
-            <Setter Property="FontSize" Value="22" />
-            <Setter Property="FontWeight" Value="SemiBold" />
+        <Style Selector="Border.keyBadge">
+            <Setter Property="Background" Value="#EBFFFFFF" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Margin" Value="9" />
+        </Style>
+
+        <Style Selector="Border.banner">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="{StaticResource FocusBrush}" />
+            <Setter Property="BorderThickness" Value="4" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="34,7" />
+        </Style>
+
+        <Style Selector="Border.banner.correct">
+            <Setter Property="BorderBrush" Value="{StaticResource CorrectBrush}" />
+        </Style>
+
+        <Style Selector="Border.banner.wrong">
+            <Setter Property="BorderBrush" Value="{StaticResource PlayBrush}" />
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="24">
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="28,24">
 
-        <!-- Scoreboard -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto">
-            <StackPanel Grid.Column="0" Margin="0,0,32,0">
-                <TextBlock Classes="stat" Text="SCORE" />
-                <TextBlock Classes="statValue" Text="{Binding Score}" />
-            </StackPanel>
+        <!-- Status rail -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
+            <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
 
-            <StackPanel Grid.Column="1" Margin="0,0,32,0">
-                <TextBlock Classes="stat" Text="BEST" />
-                <TextBlock Classes="statValue"
-                           Text="{Binding BestScore}"
-                           Foreground="#F1C40F" />
-            </StackPanel>
+                <Border Classes="pill" Margin="0,0,10,0" Padding="12,6,16,6" IsVisible="{Binding HasLives}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <Path Data="M8 14.2C8 14.2 1.6 10.3 1.6 6.1A3.5 3.5 0 0 1 8 4.2A3.5 3.5 0 0 1 14.4 6.1C14.4 10.3 8 14.2 8 14.2Z"
+                              Fill="#F3564E" Width="20" Height="20" Stretch="Uniform" />
+                        <TextBlock Text="{Binding Lives}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
 
-            <StackPanel Grid.Column="2" Margin="0,0,32,0">
-                <TextBlock Classes="stat" Text="STREAK" />
-                <TextBlock Classes="statValue" Text="{Binding Streak}" />
-            </StackPanel>
+                <Border Classes="pill" Margin="0,0,10,0" Padding="14,6" IsVisible="{Binding IsBounded}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <TextBlock Classes="label" Text="ROUND" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding RoundText}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
 
-            <StackPanel Grid.Column="3">
-                <TextBlock Classes="stat" Text="CORRECT" />
-                <TextBlock Classes="statValue" Text="{Binding CorrectAnswers}" />
-            </StackPanel>
+                <Border Classes="pill" Margin="0,0,10,0" Padding="12,6,16,6">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Path Data="M12 3L14.6 8.6L20.7 9.4L16.2 13.6L17.4 19.6L12 16.6L6.6 19.6L7.8 13.6L3.3 9.4L9.4 8.6Z"
+                              Fill="{StaticResource ScoreBrush}" Stroke="{StaticResource ScoreEdgeBrush}" StrokeThickness="1.4"
+                              Width="20" Height="20" Stretch="Uniform" />
+                        <TextBlock Text="{Binding Score}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
 
-            <StackPanel Grid.Column="4"
-                        HorizontalAlignment="Center"
-                        IsVisible="{Binding ShowsMastery}">
-                <TextBlock Classes="stat" Text="MASTERED" HorizontalAlignment="Center" />
-                <TextBlock Classes="statValue"
-                           Text="{Binding MasteryText}"
-                           Foreground="#2ECC71"
-                           HorizontalAlignment="Center" />
-            </StackPanel>
+                        <!-- The points just won, popping off the score -->
+                        <TextBlock Text="{Binding LastAward, StringFormat='+{0}'}"
+                                   IsVisible="{Binding ShowsAward}"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource CorrectEdgeBrush}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
 
-            <!-- Lives and the round count never both apply: a mode either ends when the
-                 lives run out or after a set number of rounds. They share the column. -->
-            <StackPanel Grid.Column="5" HorizontalAlignment="Right" IsVisible="{Binding HasLives}">
-                <TextBlock Classes="stat" Text="LIVES" HorizontalAlignment="Right" />
-                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                    <!-- Only up while the round that won it is on screen. -->
-                    <TextBlock Classes="statValue"
-                               Text="+1"
-                               Foreground="#2ECC71"
-                               IsVisible="{Binding HasWonLife}"
-                               VerticalAlignment="Center" />
-                    <TextBlock Classes="statValue"
-                               Text="{Binding LivesText}"
-                               Foreground="#E74C3C" />
+                <Border Classes="pill" Margin="0,0,10,0" Padding="12,6,16,6" Background="#C7FFFFFF">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <Path Data="M13 2L5 14H11L10 22L18 10H12Z"
+                              Fill="#FF8A3D" Stroke="#E06A1E" StrokeThickness="1.4"
+                              Width="18" Height="18" Stretch="Uniform" />
+                        <TextBlock Text="{Binding Streak}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="pill" Padding="12,6,16,6" Background="#C7FFFFFF" IsVisible="{Binding ShowsMastery}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                        <Ellipse Fill="#8FD86B" Width="16" Height="16" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding MasteryText}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+
+            <Border Grid.Column="1" Classes="pill" Padding="10,5,20,5" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="9">
+                    <Panel Width="26" Height="26" VerticalAlignment="Center">
+                        <Ellipse Fill="#EAF6FC" Stroke="{StaticResource FocusBrush}" StrokeThickness="2" Margin="0,2,0,0" />
+                        <Rectangle Fill="{StaticResource FocusBrush}" Width="12" Height="2.4" RadiusX="1.2" RadiusY="1.2"
+                                   HorizontalAlignment="Center" VerticalAlignment="Top" />
+                    </Panel>
+                    <TextBlock Text="{Binding TimeRemainingText}" FontSize="23" FontWeight="SemiBold"
+                               MinWidth="46" TextAlignment="Right" VerticalAlignment="Center" />
                 </StackPanel>
-            </StackPanel>
+            </Border>
 
-            <StackPanel Grid.Column="5" HorizontalAlignment="Right" IsVisible="{Binding IsBounded}">
-                <TextBlock Classes="stat" Text="ROUND" HorizontalAlignment="Right" />
-                <TextBlock Classes="statValue"
-                           Text="{Binding RoundText}"
-                           HorizontalAlignment="Right" />
-            </StackPanel>
+            <!-- Leaving mid-run needs somewhere to click, not just a key nobody is told about. -->
+            <Button Grid.Column="2" Classes="raised"
+                    Width="46" Height="46"
+                    CornerRadius="999"
+                    Padding="0"
+                    Margin="10,0,0,0"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="Quit to the menu (Esc)"
+                    Command="{Binding ReturnToMenuCommand}">
+                <Path Data="M5 5L15 15M15 5L5 15"
+                      Stroke="{StaticResource InkMutedBrush}" StrokeThickness="2.6" StrokeLineCap="Round"
+                      Width="17" Height="17" Stretch="Uniform" />
+            </Button>
         </Grid>
 
-        <!-- Countdown -->
-        <Grid Grid.Row="1" Margin="0,20,0,0" ColumnDefinitions="*,Auto">
-            <ProgressBar Grid.Column="0"
-                         Minimum="0" Maximum="1"
-                         Value="{Binding TimeFraction}"
-                         Height="6"
-                         VerticalAlignment="Center" />
-            <TextBlock Grid.Column="1"
-                       Margin="12,0,0,0"
-                       Width="38"
-                       TextAlignment="Right"
-                       FontFamily="{StaticResource ResourceKey=ContentControlThemeFontFamily}"
-                       Text="{Binding TimeRemainingText}"
-                       VerticalAlignment="Center" />
-        </Grid>
+        <ProgressBar Grid.Row="1" Classes="clock" Minimum="0" Maximum="1" Value="{Binding TimeFraction}" Margin="0,12,0,0" />
 
         <!-- Prompt -->
-        <StackPanel Grid.Row="2" Margin="0,28,0,20" IsVisible="{Binding !IsGameOver}">
-            <TextBlock Text="Which flag belongs to"
-                       HorizontalAlignment="Center"
-                       FontSize="15"
-                       Opacity="0.6" />
-            <TextBlock Text="{Binding Prompt}"
-                       HorizontalAlignment="Center"
-                       FontSize="34"
-                       FontWeight="Bold"
-                       TextWrapping="Wrap"
-                       TextAlignment="Center"
-                       Margin="0,2,0,0" />
-            <TextBlock Text="{Binding AnswerKeysText}"
-                       HorizontalAlignment="Center"
+        <StackPanel Grid.Row="2" Margin="0,18,0,0" IsVisible="{Binding !IsGameOver}" HorizontalAlignment="Center">
+            <TextBlock Classes="onSky"
+                       Text="{Binding PromptHeading}"
+                       FontSize="13"
+                       HorizontalAlignment="Center" />
+
+            <Border Classes="banner"
+                    Margin="0,8,0,0"
+                    HorizontalAlignment="Center"
+                    MinHeight="56"
+                    IsVisible="{Binding ShowsAnswerName}"
+                    Classes.correct="{Binding AnsweredCorrectly}"
+                    Classes.wrong="{Binding AnsweredWrongly}">
+                <TextBlock Text="{Binding Prompt}"
+                           FontSize="34"
+                           FontWeight="SemiBold"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           VerticalAlignment="Center" />
+            </Border>
+
+            <TextBlock Classes="onSky"
+                       Text="{Binding AnswerKeysText}"
                        FontSize="12"
-                       Opacity="0.35"
+                       Opacity="0.85"
+                       HorizontalAlignment="Center"
                        Margin="0,10,0,0" />
         </StackPanel>
 
         <!-- Flag grid -->
         <ItemsControl Grid.Row="3"
                       ItemsSource="{Binding Options}"
-                      IsVisible="{Binding !IsGameOver}">
+                      IsVisible="{Binding ShowsGrid}"
+                      Margin="0,14,0,0">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <UniformGrid Columns="{Binding $parent[ItemsControl].((vm:GameViewModel)DataContext).GridColumns}" />
@@ -199,28 +224,46 @@
 
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:FlagOptionViewModel">
-                    <Button Classes="flag"
-                            Margin="8"
+                    <Button Classes="tile"
                             Command="{Binding $parent[ItemsControl].((vm:GameViewModel)DataContext).SelectCommand}"
                             CommandParameter="{Binding}">
 
-                        <Viewbox Stretch="Uniform" MaxWidth="340">
-                            <Border Classes="option"
-                                    Width="300" Height="200"
-                                    ClipToBounds="True"
+                        <Viewbox Stretch="Uniform" MaxWidth="360">
+                            <Border Classes="tile"
+                                    Width="320" Height="222"
                                     Classes.correct="{Binding IsCorrect}"
                                     Classes.wrong="{Binding IsWrong}"
-                                    Classes.revealed="{Binding IsRevealed}">
+                                    Classes.revealed="{Binding IsRevealed}"
+                                    Classes.dimmed="{Binding IsDimmed}">
                                 <Panel>
-       
-                                    <TextBlock Text="{Binding Code}"
-                                               IsVisible="{Binding !HasImage}"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               FontSize="28"
-                                               Opacity="0.35" />
-        
-                                    <Image Source="{Binding Image}" Stretch="Fill" />
+                                    <Border CornerRadius="11" ClipToBounds="True">
+                                        <Panel>
+                                            <TextBlock Text="{Binding Code}"
+                                                       IsVisible="{Binding !HasImage}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="28"
+                                                       Foreground="{StaticResource InkFaintBrush}" />
+                                            <Image Source="{Binding Image}" Stretch="Fill" />
+                                        </Panel>
+                                    </Border>
+
+                                    <Border Classes="keyBadge">
+                                        <TextBlock Text="{Binding Key}" FontSize="16" FontWeight="SemiBold"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+
+                                    <!-- The moment the round turns on -->
+                                    <Panel IsVisible="{Binding IsCorrect}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Data="M18 54L42 78L88 24"
+                                              Stroke="White" StrokeThickness="22"
+                                              StrokeLineCap="Round" StrokeJoin="Round"
+                                              Width="104" Height="104" Stretch="Uniform" />
+                                        <Path Data="M18 54L42 78L88 24"
+                                              Stroke="#3FBF6E" StrokeThickness="13"
+                                              StrokeLineCap="Round" StrokeJoin="Round"
+                                              Width="104" Height="104" Stretch="Uniform" />
+                                    </Panel>
                                 </Panel>
                             </Border>
                         </Viewbox>
@@ -229,56 +272,107 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- Game over -->
+        <!-- Recall: the flag is the question and the player names the country -->
+        <StackPanel Grid.Row="3"
+                    IsVisible="{Binding ShowsRecall}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="20">
+
+            <Border Classes="tile"
+                    Padding="11"
+                    Width="420" Height="288"
+                    Classes.correct="{Binding AnsweredCorrectly}"
+                    Classes.wrong="{Binding AnsweredWrongly}">
+                <Border CornerRadius="13" ClipToBounds="True">
+                    <Image Source="{Binding PromptFlag}" Stretch="Fill" />
+                </Border>
+            </Border>
+
+            <Grid ColumnDefinitions="*,12,Auto" Width="560">
+                <Border Grid.Column="0" Background="White" BorderBrush="{StaticResource FocusBrush}" BorderThickness="4"
+                        CornerRadius="16" Padding="14,4">
+                    <AutoCompleteBox ItemsSource="{Binding Choices}"
+                                     SelectedItem="{Binding SelectedChoice}"
+                                     FilterMode="Contains"
+                                     MinimumPrefixLength="1"
+                                     IsTextCompletionEnabled="False"
+                                     Watermark="Type a country…"
+                                     FontSize="19"
+                                     BorderThickness="0"
+                                     Background="Transparent" />
+                </Border>
+
+                <Button Grid.Column="2" Classes="raised confirm" Content="Guess" FontSize="18"
+                        Command="{Binding SubmitCommand}" IsDefault="True" />
+            </Grid>
+        </StackPanel>
+
+        <!-- Run over -->
         <StackPanel Grid.Row="3"
                     IsVisible="{Binding IsGameOver}"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Spacing="8">
-            <TextBlock Text="{Binding EndTitle}"
-                       FontSize="30"
+                    Spacing="4">
+
+            <TextBlock Classes="onSky"
+                       Text="{Binding EndTitle}"
+                       FontSize="42"
                        FontWeight="Bold"
                        HorizontalAlignment="Center" />
-            <TextBlock HorizontalAlignment="Center" FontSize="17" Opacity="0.75">
-                <Run Text="Final score" />
-                <Run Text="{Binding Score}" FontWeight="SemiBold" />
-            </TextBlock>
-            <TextBlock Text="{Binding ResultMessage}"
-                       HorizontalAlignment="Center"
-                       Opacity="0.6" />
-            <TextBlock Text="{Binding MasteryDetail}"
-                       IsVisible="{Binding ShowsMastery}"
-                       HorizontalAlignment="Center"
-                       Foreground="#2ECC71"
-                       Opacity="0.7" />
-            <TextBlock Text="🏆 New best score!"
-                       IsVisible="{Binding IsNewBest}"
-                       HorizontalAlignment="Center"
-                       FontSize="17"
-                       FontWeight="SemiBold"
-                       Foreground="#F1C40F"
-                       Margin="0,6,0,0" />
-            <StackPanel Orientation="Horizontal"
-                        HorizontalAlignment="Center"
-                        Spacing="12"
-                        Margin="0,16,0,0">
-                <Button Content="Play again"
-                        Command="{Binding StartNewGameCommand}"
-                        Padding="24,10"
-                        IsDefault="True" />
-                <Button Content="Main menu"
-                        Command="{Binding ReturnToMenuCommand}"
-                        Padding="24,10" />
+
+            <Border Classes="card" Padding="26,22" Margin="0,16,0,0" MinWidth="420">
+                <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Final score" FontSize="15"
+                                   Foreground="{StaticResource InkMutedBrush}" VerticalAlignment="Bottom" />
+                        <TextBlock Grid.Column="1" Text="{Binding Score}" FontSize="44" FontWeight="Bold"
+                                   Foreground="{StaticResource ScoreTextBrush}" />
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsNewBest}">
+                        <Path Data="M12 3L14.6 8.6L20.7 9.4L16.2 13.6L17.4 19.6L12 16.6L6.6 19.6L7.8 13.6L3.3 9.4L9.4 8.6Z"
+                              Fill="{StaticResource ScoreBrush}" Stroke="{StaticResource ScoreEdgeBrush}" StrokeThickness="1.4"
+                              Width="18" Height="18" Stretch="Uniform" />
+                        <TextBlock Text="New best score!" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{StaticResource CorrectEdgeBrush}" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding ResultMessage}" FontSize="14"
+                               Foreground="{StaticResource InkMutedBrush}" />
+
+                    <TextBlock Text="{Binding MasteryDetail}"
+                               IsVisible="{Binding ShowsMastery}"
+                               FontSize="14" FontWeight="SemiBold"
+                               Foreground="{StaticResource CorrectEdgeBrush}" />
+                </StackPanel>
+            </Border>
+
+            <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center" Margin="0,20,0,0">
+                <Button Classes="raised confirm" Content="Play again" FontSize="19"
+                        Padding="34,12,34,14" Command="{Binding StartNewGameCommand}" IsDefault="True" />
+                <Button Classes="raised" Content="Main menu" FontSize="19"
+                        Padding="30,12,30,14" Command="{Binding ReturnToMenuCommand}" />
             </StackPanel>
         </StackPanel>
-        
-        <TextBlock Grid.Row="4"
-                   Text="{Binding ResultMessage}"
-                   IsVisible="{Binding !IsGameOver}"
-                   HorizontalAlignment="Center"
-                   Margin="0,16,0,4"
-                   FontSize="16"
-                   Height="24"
-                   Opacity="0.85" />
+
+        <!-- Result. The row keeps its height so the grid above never jumps. -->
+        <Panel Grid.Row="4" MinHeight="54" IsVisible="{Binding !IsGameOver}">
+        <Border IsVisible="{Binding HasResultMessage}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="0,14,0,2"
+                MinHeight="38"
+                CornerRadius="999"
+                Padding="26,7"
+                BorderBrush="White"
+                BorderThickness="3"
+                Background="#C7FFFFFF">
+            <TextBlock Text="{Binding ResultMessage}"
+                       FontSize="17"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+        </Border>
+        </Panel>
     </Grid>
 </UserControl>

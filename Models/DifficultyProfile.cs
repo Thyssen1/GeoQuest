@@ -29,6 +29,16 @@ public sealed record DifficultyProfile
     /// keeps its board about surviving the run in front of it.</summary>
     public required bool ShowsMastery { get; init; }
 
+    /// <summary>How the player answers. Naming a country takes longer than pointing at a
+    /// tile, which is why the clock is a profile value rather than a constant.</summary>
+    public required RoundInput Input { get; init; }
+
+    /// <summary>Seconds allowed in the opening round.</summary>
+    public required double OpeningSeconds { get; init; }
+
+    /// <summary>The clock never drops below this, however deep the run goes.</summary>
+    public required double MinimumSeconds { get; init; }
+
     /// <summary>The classic run. Lives come from Options, so this is the settings-dependent one.</summary>
     public static readonly DifficultyProfile Normal = new()
     {
@@ -39,6 +49,9 @@ public sealed record DifficultyProfile
         MaxOptions = GameRules.MaxOptions,
         RoundLimit = 0,
         ShowsMastery = true,
+        Input = RoundInput.Grid,
+        OpeningSeconds = 12d,
+        MinimumSeconds = 7d,
     };
 
     /// <summary>
@@ -54,6 +67,9 @@ public sealed record DifficultyProfile
         MaxOptions = 4,
         RoundLimit = 20,
         ShowsMastery = true,
+        Input = RoundInput.Grid,
+        OpeningSeconds = 12d,
+        MinimumSeconds = 7d,
     };
 
     /// <summary>
@@ -70,6 +86,31 @@ public sealed record DifficultyProfile
         MaxOptions = GameRules.MaxOptions,
         RoundLimit = 0,
         ShowsMastery = false,
+        Input = RoundInput.Grid,
+        OpeningSeconds = 12d,
+        MinimumSeconds = 7d,
+    };
+
+    /// <summary>
+    /// The question the other way round: a flag, and 197 country names to pick from. That
+    /// is recall rather than recognition, so guessing is hopeless and the clock is longer —
+    /// naming a country takes far more than pointing at one of four tiles.
+    /// </summary>
+    public static readonly DifficultyProfile Recall = new()
+    {
+        Mode = GameMode.Recall,
+        StartingLives = 3,
+        BonusLifeChance = GameRules.BonusLifeChance,
+
+        // No grid to grow. The generator still draws a round; only its answer is used.
+        OpeningOptions = GameRules.MinOptions,
+        MaxOptions = GameRules.MinOptions,
+
+        RoundLimit = 0,
+        ShowsMastery = true,
+        Input = RoundInput.Name,
+        OpeningSeconds = 18d,
+        MinimumSeconds = 18d,
     };
 
     /// <summary>True when running out of lives is what ends the run.</summary>
@@ -86,6 +127,7 @@ public sealed record DifficultyProfile
     {
         GameMode.Learning => Learning,
         GameMode.Hard => Hard,
+        GameMode.Recall => Recall,
         _ => Normal with { StartingLives = (settings ?? new GameSettings()).Sanitised().StartingLives },
     };
 }

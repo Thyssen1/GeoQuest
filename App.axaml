@@ -2,14 +2,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="GeoQuest.App"
              xmlns:local="using:GeoQuest"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Light">
+             <!-- Pinned to Light: the palette in Styles/Theme.axaml is a fixed light
+                  design, so following the system variant would only half-apply it. -->
 
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>
-  
+
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://GeoQuest/Styles/Theme.axaml" />
     </Application.Styles>
 </Application>

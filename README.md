@@ -68,8 +68,9 @@ Answer with the mouse, or press **1–6** on the number row or numpad. **Esc** a
 | **Normal** | The classic run. Three flags growing to six, lives from Options, extra lives possible. |
 | **Learning** | Twenty rounds at a steady four flags on a clock that never tightens, drawn from the flags you are actually learning. Nothing to lose. |
 | **Hard** | Opens at four flags and climbs to six. Three lives, and no way to earn any back. |
+| **Recall** | The question the other way round: a flag is shown and you name the country, from all 197. Eighteen seconds a round, three lives. |
 
-Press **1–3** to pick, or **Enter** for the mode you played last.
+Press **1–4** to pick, or **Enter** for the mode you played last.
 
 ### Learning progress
 
@@ -78,6 +79,8 @@ Every mode records what you show it, because mastery is a claim about what you k
 - **Unseen** — the 197 flags you have not been asked about yet
 - **Boxes 1–3** — being learned. A *quick* correct answer promotes a flag; a slow one holds it where it is, because at four options a slow correct answer is often a guess that landed. A miss costs a box.
 - **Box 4 — mastered.** Out of rotation, apart from an occasional re-test. Fail that and the flag drops back to box 2, so the number can fall as well as rise.
+
+Recall tests the same knowledge in the opposite direction — picking a flag and naming one are the two sides of the same card — so it moves the same boxes. A flag only stays mastered if you can handle it whichever way it comes up.
 
 The **MASTERED** figure on the scoreboard is box 4 as a share of the pool. Normal mode moves it slowly — it draws uniformly from all 197, so the same flag comes round rarely. Learning mode drives it: it works on twenty flags at a time and returns to them until they graduate, letting new ones in only as others are learned.
 

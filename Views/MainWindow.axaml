@@ -9,6 +9,7 @@
         Icon="/Assets/avalonia-logo.ico"
         Width="900" Height="720"
         MinWidth="560" MinHeight="540"
+        Background="{StaticResource SkyBrush}"
         Title="GeoQuest">
 
     <Design.DataContext>
@@ -34,11 +35,38 @@
         <KeyBinding Gesture="Escape" Command="{Binding BackCommand}" />
     </Window.KeyBindings>
 
-    <!-- Each page is resolved to its view by ViewLocator -->
-    <TransitioningContentControl Content="{Binding CurrentPage}">
-        <TransitioningContentControl.PageTransition>
-            <CrossFade Duration="0:0:0.2" />
-        </TransitioningContentControl.PageTransition>
-    </TransitioningContentControl>
+    <Panel>
+        <!-- The sky belongs to the window, so every page shares one continuous
+             background and nothing flashes during the page transition. -->
+        <Panel ClipToBounds="True">
+            <Panel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-50,110,0,0"
+                   Width="250" Height="90" Opacity="0.55">
+                <Ellipse Fill="White" Width="150" Height="58" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
+                <Ellipse Fill="White" Width="112" Height="76" HorizontalAlignment="Center" VerticalAlignment="Top" />
+                <Ellipse Fill="White" Width="124" Height="54" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+            </Panel>
+
+            <Panel HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,280,-60,0"
+                   Width="220" Height="80" Opacity="0.45">
+                <Ellipse Fill="White" Width="132" Height="52" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
+                <Ellipse Fill="White" Width="100" Height="68" HorizontalAlignment="Center" VerticalAlignment="Top" />
+                <Ellipse Fill="White" Width="110" Height="48" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+            </Panel>
+
+            <Panel HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="150,0,0,-30"
+                   Width="280" Height="100" Opacity="0.5">
+                <Ellipse Fill="White" Width="168" Height="66" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
+                <Ellipse Fill="White" Width="126" Height="86" HorizontalAlignment="Center" VerticalAlignment="Top" />
+                <Ellipse Fill="White" Width="140" Height="62" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+            </Panel>
+        </Panel>
+
+        <!-- Each page is resolved to its view by ViewLocator -->
+        <TransitioningContentControl Content="{Binding CurrentPage}">
+            <TransitioningContentControl.PageTransition>
+                <CrossFade Duration="0:0:0.2" />
+            </TransitioningContentControl.PageTransition>
+        </TransitioningContentControl>
+    </Panel>
 
 </Window>

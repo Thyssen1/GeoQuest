@@ -9,48 +9,40 @@
 
     <UserControl.Styles>
         <Style Selector="TextBlock.settingName">
-            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontSize" Value="17" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
         <Style Selector="TextBlock.settingHint">
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="{StaticResource InkMutedBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
-            <Setter Property="Margin" Value="0,2,0,0" />
+            <Setter Property="Margin" Value="0,3,0,0" />
         </Style>
 
-        <Style Selector="Border.settingRow">
-            <Setter Property="Background" Value="#14808080" />
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Padding" Value="18" />
+        <Style Selector="RadioButton">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto" Margin="24">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="30,26">
 
-        <TextBlock Grid.Row="0"
-                   Text="Options"
-                   FontSize="34"
-                   FontWeight="Bold"
-                   Margin="0,4,0,20" />
+        <TextBlock Grid.Row="0" Classes="onSky" Text="Options" FontSize="38" FontWeight="Bold" Margin="0,0,0,20" />
 
         <ScrollViewer Grid.Row="1">
-            <StackPanel Spacing="14" MaxWidth="560" HorizontalAlignment="Left">
+            <StackPanel Spacing="14" MaxWidth="600" HorizontalAlignment="Left">
 
                 <!-- Starting lives -->
-                <Border Classes="settingRow">
+                <Border Classes="card" Padding="20,18">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Margin="0,0,16,0">
                             <TextBlock Classes="settingName" Text="Starting lives" />
                             <TextBlock Classes="settingHint"
-                                       Text="How many wrong answers or timeouts a Normal run survives. Applies to your next run — Hard mode always gives three." />
+                                       Text="How many wrong answers or timeouts a Normal run survives. Applies to your next run — Hard and Recall always give three." />
                         </StackPanel>
 
-                        <StackPanel Grid.Column="1"
-                                    Orientation="Horizontal"
-                                    Spacing="10"
-                                    VerticalAlignment="Center">
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                             <RadioButton GroupName="Lives" Content="1" IsChecked="{Binding IsOneLife}" />
                             <RadioButton GroupName="Lives" Content="3" IsChecked="{Binding IsThreeLives}" />
                             <RadioButton GroupName="Lives" Content="5" IsChecked="{Binding IsFiveLives}" />
@@ -59,7 +51,7 @@
                 </Border>
 
                 <!-- Sound -->
-                <Border Classes="settingRow">
+                <Border Classes="card" Padding="20,18">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Margin="0,0,16,0">
                             <TextBlock Classes="settingName" Text="Sound" />
@@ -75,42 +67,38 @@
                     </Grid>
                 </Border>
 
-                <!-- Best score -->
-                <Border Classes="settingRow">
+                <!-- Best scores -->
+                <Border Classes="card" Padding="20,18">
                     <StackPanel Spacing="12">
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Margin="0,0,16,0">
                                 <TextBlock Classes="settingName" Text="Best scores" />
                                 <TextBlock Classes="settingHint"
-                                           Text="Each mode keeps its own best, shown when you pick a mode. Resetting clears all three and cannot be undone." />
+                                           Text="Each mode keeps its own best, shown when you pick a mode. Resetting clears them all and cannot be undone." />
                             </StackPanel>
 
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                                <Button Content="Reset"
-                                        Command="{Binding BeginResetScoreCommand}"
-                                        IsEnabled="{Binding HasBestScore}"
-                                        IsVisible="{Binding !IsConfirmingReset}" />
-                            </StackPanel>
+                            <Button Grid.Column="1" Classes="raised" Content="Reset" FontSize="15"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding BeginResetScoreCommand}"
+                                    IsEnabled="{Binding HasBestScore}"
+                                    IsVisible="{Binding !IsConfirmingReset}" />
                         </Grid>
 
                         <!-- Two-step confirmation, since this destroys data. -->
                         <Border IsVisible="{Binding IsConfirmingReset}"
-                                Background="#22E74C3C"
-                                CornerRadius="8"
-                                Padding="14">
+                                Background="#FFECEA"
+                                CornerRadius="14"
+                                Padding="16,14">
                             <Grid ColumnDefinitions="*,Auto,Auto">
                                 <TextBlock Grid.Column="0"
                                            Text="Erase your best score in every mode permanently?"
+                                           FontSize="14"
                                            VerticalAlignment="Center"
                                            TextWrapping="Wrap"
                                            Margin="0,0,12,0" />
-                                <Button Grid.Column="1"
-                                        Content="Cancel"
-                                        Margin="0,0,8,0"
-                                        Command="{Binding CancelResetScoreCommand}" />
-                                <Button Grid.Column="2"
-                                        Content="Erase"
-                                        Foreground="#E74C3C"
+                                <Button Grid.Column="1" Classes="raised" Content="Cancel" FontSize="14"
+                                        Margin="0,0,10,0" Command="{Binding CancelResetScoreCommand}" />
+                                <Button Grid.Column="2" Classes="raised primary" Content="Erase" FontSize="14"
                                         Command="{Binding ConfirmResetScoreCommand}" />
                             </Grid>
                         </Border>
@@ -118,27 +106,23 @@
                 </Border>
 
                 <!-- Save location -->
-                <Border Classes="settingRow">
+                <Border Classes="card" Padding="20,18">
                     <StackPanel>
                         <TextBlock Classes="settingName" Text="Saved data" />
                         <TextBlock Classes="settingHint"
-                                   Text="Your score and settings are stored here, outside the app, so they survive upgrades." />
+                                   Text="Your scores, settings and learning progress are stored here, outside the app, so they survive upgrades." />
                         <SelectableTextBlock Text="{Binding SaveLocation}"
                                              FontFamily="Consolas,Menlo,monospace"
                                              FontSize="12"
-                                             Opacity="0.75"
+                                             Foreground="{StaticResource InkMutedBrush}"
                                              TextWrapping="Wrap"
-                                             Margin="0,8,0,0" />
+                                             Margin="0,10,0,0" />
                     </StackPanel>
                 </Border>
             </StackPanel>
         </ScrollViewer>
 
-        <Button Grid.Row="2"
-                Content="Back"
-                Command="{Binding BackCommand}"
-                Padding="28,10"
-                Margin="0,20,0,40"
-                HorizontalAlignment="Left" />
+        <Button Grid.Row="2" Classes="raised" Content="Back" FontSize="16"
+                Margin="0,20,0,0" HorizontalAlignment="Left" Command="{Binding BackCommand}" />
     </Grid>
 </UserControl>

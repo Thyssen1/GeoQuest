@@ -201,4 +201,12 @@ public class GameRulesTests
         // Hard mode's "no way to earn a life" is these odds, not a branch somewhere.
         Assert.False(GameRules.AwardsBonusLife(lives: 1, roll: 0d, chance: 0d));
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(20)]
+    public void Recall_keeps_a_steady_clock(int correct)
+    {
+        Assert.Equal(TimeSpan.FromSeconds(18), GameRules.RoundDurationFor(correct, DifficultyProfile.Recall));
+    }
 }
