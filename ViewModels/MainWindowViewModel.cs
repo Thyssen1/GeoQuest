@@ -24,11 +24,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly SystemSoundPlayer _sounds = new SystemSoundPlayer();
 
     /// <summary>Each game's artwork source, built once: both cache what they load.</summary>
-    private readonly Dictionary<MiniGame, ICountryArtwork> _artwork = new()
-    {
-        [MiniGame.Flags] = new FlagImageLoader(),
-        [MiniGame.Borders] = new OutlineLoader(),
-    };
+    private readonly CityLoader _cities = new();
+
+    /// <summary>Each game's artwork source, built once: all of them cache what they load.</summary>
+    private readonly Dictionary<MiniGame, ICountryArtwork> _artwork;
 
     private readonly Dictionary<MiniGame, PlayerHistory> _history = [];
 
@@ -52,6 +51,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _settings = settings;
         _scores = scores;
         _historyStore = history ?? new FileHistoryStore();
+
+        // Built here rather than inline because Find the City's loader is shared with the
+        // run itself, which needs the map and the capitals as well as the artwork slot.
+        _artwork = new Dictionary<MiniGame, ICountryArtwork>
+        {
+            [MiniGame.Flags] = new FlagImageLoader(),
+            [MiniGame.Borders] = new OutlineLoader(),
+        };
 
         ShowMenu();
     }
@@ -150,7 +157,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         _game = new GameViewModel(
             generator,
-            _artwork[game],
+            _artwork.GetValueOrDefault(game),
             _scores,
             DifficultyProfile.For(game, mode, settings),
             // Muting a run is giving it no sound player at all.
@@ -158,7 +165,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             random: null,
             history: History(game),
             // Only Recall shows the list; the other modes never need it.
-            choices: repository.QuestionPool);
+            choices: repository.QuestionPool,
+            // Only Find the City reads it, and it caches, so one instance serves every run.
+            cities: game == MiniGame.Cities ? _cities : null);
 
         _game.MenuRequested += (_, _) => ShowMenu();
 

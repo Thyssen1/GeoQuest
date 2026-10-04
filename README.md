@@ -2,7 +2,7 @@
 
 **A fast-paced geography trivia game for desktop, built with C# and Avalonia UI.**
 
-Inspired by the classic *Geo Challenge*, GeoQuest is a set of timed mini-games that ask you to identify countries — from their flags, their outlines, and later their cities and landmarks. Answer correctly and it gets harder: more options to choose from, less time to choose.
+Inspired by the classic *Geo Challenge*, GeoQuest is a set of timed mini-games that ask you to identify countries — from their flags, their outlines and their capitals, with landmarks to come. Answer correctly and it gets harder: more options to choose from, less time to choose.
 
 | | |
 | --- | --- |
@@ -12,7 +12,7 @@ Inspired by the classic *Geo Challenge*, GeoQuest is a set of timed mini-games t
 [![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/download)
 [![Avalonia](https://img.shields.io/badge/Avalonia-12-8B44AC)](https://avaloniaui.net/)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
-![Status](https://img.shields.io/badge/milestone%202-playable-2ECC71)
+![Status](https://img.shields.io/badge/milestone%203-playable-2ECC71)
 
 ## Download
 
@@ -42,19 +42,26 @@ Your scores, settings and progress live outside the application so they survive 
 | --- | --- |
 | **Guess the Flag** | The country's flag |
 | **Guess the Border** | The country's outline, with nothing but the shape to go on |
+| **Find the City** | A world map, with a capital named and a pin to drop on it |
 
 | Mode | Terms |
 | --- | --- |
 | **Normal** | The classic run. Three options growing to six, lives from Options, extra lives possible. |
 | **Learning** | Twenty rounds at a steady four options on a clock that never tightens, drawn from what you are actually learning. Nothing to lose. |
 | **Hard** | Opens at four and climbs to six. Three lives, and no way to earn any back. |
-| **Recall** | The question reversed: one picture is shown and you name the country, from all 197. |
+| **Recall** | The question reversed: the picture is shown and you name it, from all 197. |
 
-Each game keeps its own best scores and its own progress, because knowing a country's flag says nothing about whether you would recognise its outline.
+A pin round has no options to add, so Find the City gets harder the only way it can: the target shrinks on the same thresholds that widen the grid. Normal opens at 800 km and closes to 350, Hard at 500 closing to 200, Learning at a steady 1000.
+
+Each game keeps its own best scores and its own progress, because knowing a country's flag says nothing about whether you would recognise its outline, or place its capital.
 
 **The rules of a run.** The grid opens at three options and grows to four, five and six at 3, 7 and 12 correct answers, while the clock tightens by a second per step. A correct answer is worth 100 points, up to 50% more for answering fast, multiplied by a streak bonus capping at 2×. A wrong pick or a timeout costs a life and resets the streak; a correct answer carries roughly a one-in-eight chance of winning a life back, up to a ceiling of five.
 
 ![A correct answer revealed](docs/reveal.png)
+
+**A pin is judged on great-circle distance**, not on distance across the drawn map, so a near miss in Siberia and one in Indonesia are scored alike. Anything within 50 km counts as dead on — that is under a pixel at map scale, and the score should not turn on which pixel you hit. Past that, the award falls off to a quarter at the edge of what the mode accepts, because knowing roughly where a city is deserves more than nothing.
+
+![Find the City](docs/cities.png)
 
 Answer with the mouse or press **1–6**. **Enter** repeats whatever you played last, and **Esc** steps back one screen at a time. **Options** sets starting lives for Normal runs, turns sound on or off, and resets every best score.
 
@@ -76,7 +83,7 @@ The **MASTERED** percentage is box 4 as a share of the pool. Normal mode moves i
 | --- | --- |
 | **1 — Guess the Flag** | ✅ Playable |
 | **2 — Guess the Border** | ✅ Playable |
-| 3 — Find the City | Not started — drop a pin on a world map, scored by distance |
+| **3 — Find the City** | ✅ Playable |
 | 4 — Find the Landmark | Not started — the same pin-drop over monuments |
 
 Later: sub-national modes reusing the map and distance scoring — "find the city in Denmark", "find the state".
@@ -123,7 +130,9 @@ GeoQuest/
 │   ├── countries.json # ISO code -> name, region, kind
 │   ├── Flags/         # *.svg sources (not shipped), *.png generated (shipped)
 │   ├── Sounds/        # 16-bit PCM WAVs, generated
-│   └── Borders/       # Country outlines as unit-square polygons, generated
+│   ├── Borders/       # Country outlines as unit-square polygons, generated
+│   ├── Cities/        # Capitals with coordinates, generated
+│   └── Maps/          # The world in one equirectangular projection, generated
 ├── Models/            # Domain types and the pure rules (GameRules, LearningRules)
 ├── Services/          # Data access, question generation, asset loading
 ├── ViewModels/        # Presentation state and commands
@@ -137,7 +146,7 @@ GeoQuest/
 
 `MainWindowViewModel` is the shell: it owns which page is on screen and the lifetime of each. Pages never navigate themselves — they raise intent and the shell decides what it means. The chosen game and mode resolve to a `DifficultyProfile`, which holds lives, bonus-life odds, grid width, clock and session length as *values* rather than as branches through the rules; a run is built fresh from it and disposed when it ends.
 
-Three adapters know about `avares://` so nothing else has to: `AssetCountryData`, `FlagImageLoader` and `OutlineLoader`.
+Four adapters know about `avares://` so nothing else has to: `AssetCountryData`, `FlagImageLoader`, `OutlineLoader` and `CityLoader`.
 
 ## Assets
 
@@ -155,7 +164,8 @@ Three generators live in `tools/`, each committed so assets can be rebuilt from 
 | --- | --- |
 | `dotnet run --project tools/FlagConverter -- --height 320 --fill --force` | 480×320 flag PNGs from the SVG sources |
 | `dotnet run --project tools/SoundMaker` | The three answer sounds as WAVs |
-| `dotnet run --project tools/BorderBaker -- --input <ne_10m_admin_0_countries.shp>` | `borders.json` — 197 outlines, ~450 KB |
+| `dotnet run --project tools/BorderBaker -- --input <ne_10m_admin_0_countries.shp> --world` | `borders.json` — 197 outlines, ~450 KB — and `world.json`, the map behind Find the City |
+| `dotnet run --project tools/CityBaker -- --input <ne_10m_populated_places.shp>` | `cities.json` — 197 capitals, ~12 KB |
 
 **Flags** are keyed by lowercase ISO 3166-1 alpha-2 (`dk.png`), and every PNG is stretched to an identical 480×320 canvas. That trades true proportions for a perfectly uniform grid, which is why the view uses `Stretch="Fill"`. `countries.json` must stay in sync — 255 entries, 255 images — and its ISO code is the single join key across every mini-game.
 
@@ -163,10 +173,14 @@ Three generators live in `tools/`, each committed so assets can be rebuilt from 
 
 **Outlines** are baked from Natural Earth's public-domain *Admin 0 – Countries* shapefile, which is ~10 MB and not kept in the repository; download it from [Natural Earth](https://www.naturalearthdata.com/downloads/) to re-bake. The baker has three jobs, each of which produces a nonsense silhouette if skipped: normalising every country onto its own square so Russia and Monaco present comparably; dropping distant territories, so France is the hexagon rather than a speck beside French Guiana; and handling the antimeridian, where Russia and Fiji otherwise smear across the world.
 
+**The world map** is baked from the same shapefile with `--world`, and makes the opposite choice at every turn: one shared equirectangular projection instead of a square each, no latitude squeeze, and islands kept rather than pruned. Each country's largest landmasses are drawn however small they are, because Tonga and Tuvalu fall under any sensible size floor and a map without them is one the game can ask unanswerable questions about.
+
+**Capitals** come from Natural Earth's *Populated Places*. Eight countries need correcting by hand, each an entry in one table in the baker: four have no usable capital in the data — Kosovo's code is `-99`, South Sudan's flag was never set after independence, Palestine has none flagged, and Nauru has no city at all — three flag several, where taking the largest yields Cape Town and Abidjan rather than Pretoria and Yamoussoukro, and Kazakhstan still says Nur-Sultan, renamed back to Astana a few months after this release of the data.
+
 ## Credits
 
 Flag artwork comes from [hampusborgos/country-flags](https://github.com/hampusborgos/country-flags), sourced from Wikimedia Commons and checked against the relevant national legislation. That project states the flags are **in the public domain**, on the basis that flags are not subject to copyright — while noting that individual countries may impose separate, non-copyright restrictions on their use. Only the SVG sources are taken from upstream; the PNGs here are generated from them.
 
-Country outlines come from [Natural Earth](https://www.naturalearthdata.com/), which places its data in the public domain.
+Country outlines, the world map and the capital cities come from [Natural Earth](https://www.naturalearthdata.com/), which places its data in the public domain.
 
-Country names, regions and `kind` classifications in `Assets/countries.json` were compiled for this project.
+Country names and `kind` classifications in `Assets/countries.json` were compiled for this project.

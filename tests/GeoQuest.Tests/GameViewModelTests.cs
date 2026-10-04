@@ -9,7 +9,8 @@ namespace GeoQuest.Tests;
 /// differently. These are the combinations the profiles multiply together, and nothing
 /// covered them until the headless session made the view model constructible.
 /// </summary>
-public class GameViewModelTests : IClassFixture<HeadlessSession>, IDisposable
+[Collection(AvaloniaCollection.Name)]
+public class GameViewModelTests : IDisposable
 {
     private readonly HeadlessSession _avalonia;
 

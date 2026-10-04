@@ -48,7 +48,6 @@ public class CountryDataTests
         {
             Assert.False(string.IsNullOrWhiteSpace(c.Code));
             Assert.False(string.IsNullOrWhiteSpace(c.Name));
-            Assert.False(string.IsNullOrWhiteSpace(c.Region));
         });
     }
 

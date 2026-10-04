@@ -40,7 +40,12 @@ public sealed record DifficultyProfile
     public MiniGame Game { get; init; } = MiniGame.Flags;
 
     /// <summary>What a round draws, which follows from the game.</summary>
-    public RoundSubject Subject => Game == MiniGame.Borders ? RoundSubject.Outline : RoundSubject.Flag;
+    public RoundSubject Subject => Game switch
+    {
+        MiniGame.Borders => RoundSubject.Outline,
+        MiniGame.Cities => RoundSubject.Place,
+        _ => RoundSubject.Flag,
+    };
 
     /// <summary>Seconds allowed in the opening round.</summary>
     public required double OpeningSeconds { get; init; }
@@ -50,6 +55,16 @@ public sealed record DifficultyProfile
 
     /// <summary>How long the answer stays on screen before the next round begins.</summary>
     public required double RevealSeconds { get; init; }
+
+    /// <summary>
+    /// How far a pin may land from the city and still count, in kilometres, in the opening
+    /// round. This is Find the City's version of the opening grid width: there are no
+    /// options to add, so the way a pin round gets harder is that the target shrinks.
+    /// </summary>
+    public double OpeningToleranceKm { get; init; } = 800d;
+
+    /// <summary>The target never shrinks below this, however deep the run goes.</summary>
+    public double MinimumToleranceKm { get; init; } = 350d;
 
     /// <summary>The classic run. Lives come from Options, so this is the settings-dependent one.</summary>
     public static readonly DifficultyProfile Normal = new()
@@ -81,6 +96,8 @@ public sealed record DifficultyProfile
         MaxOptions = 4,
         RoundLimit = 20,
         RevealSeconds = 1.6d,
+        MinimumToleranceKm = 1000d,
+        OpeningToleranceKm = 1000d,
     };
 
     /// <summary>
@@ -94,11 +111,13 @@ public sealed record DifficultyProfile
         BonusLifeChance = 0d,
         OpeningOptions = 4,
         ShowsMastery = false,
+        OpeningToleranceKm = 500d,
+        MinimumToleranceKm = 200d,
     };
 
     /// <summary>
     /// The question the other way round: one picture, and 197 names to pick from. That is
-    /// recall rather than recognition, so guessing is hopeless and the clock is longer —
+    /// recall rather than recognition, so guessing is hopeless and the clock is longer â€”
     /// naming a country takes far more than pointing at one of four tiles. There is no grid
     /// to grow; the generator still draws a round, but only its answer is used.
     /// </summary>
@@ -135,6 +154,16 @@ public sealed record DifficultyProfile
     /// what the round draws, so the two combine rather than multiplying into eight
     /// hand-written profiles.
     /// </summary>
-    public static DifficultyProfile For(MiniGame game, GameMode mode, GameSettings? settings = null) =>
-        For(mode, settings) with { Game = game };
+    public static DifficultyProfile For(MiniGame game, GameMode mode, GameSettings? settings = null)
+    {
+        var profile = For(mode, settings) with { Game = game };
+
+        // Find the City is the one game whose answer is a place rather than a choice, so
+        // its rounds are answered with a pin. Recall is the exception that proves it: there
+        // the pin is already on the map and the city is the thing to be named, which is the
+        // same reversal Recall performs in the other two games.
+        return game == MiniGame.Cities && mode != GameMode.Recall
+            ? profile with { Input = RoundInput.Pin }
+            : profile;
+    }
 }

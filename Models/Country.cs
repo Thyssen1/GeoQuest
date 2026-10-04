@@ -38,10 +38,6 @@ public sealed record Country
     [JsonPropertyName("name")]
     public required string Name { get; init; }
 
-    /// <summary>Continent-level grouping. Used to bias distractor choice and, later, to filter by region.</summary>
-    [JsonPropertyName("region")]
-    public required string Region { get; init; }
-
     [JsonPropertyName("kind")]
     public required CountryKind Kind { get; init; }
 }

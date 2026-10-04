@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GeoQuest.ViewModels"
+             xmlns:views="using:GeoQuest.Views"
              xmlns:media="using:Avalonia.Media"
              xmlns:imaging="using:Avalonia.Media.Imaging"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -101,12 +102,36 @@
             <Setter Property="Margin" Value="9" />
         </Style>
 
+        <!-- The map gets its own card rather than reusing the flag tile's, because that one
+             thickens its border when an answer lands. On a flag that is just a highlight;
+             under a map it is a smaller map, so the world would change size every time a
+             round ended. Here the chrome is fixed and only its colour resolves. -->
+        <Style Selector="Border.mapcard">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="BorderThickness" Value="5,5,5,8" />
+            <Setter Property="BorderBrush" Value="White" />
+            <Setter Property="Padding" Value="4" />
+        </Style>
+
+        <Style Selector="Border.mapcard.correct">
+            <Setter Property="BorderBrush" Value="{StaticResource CorrectBrush}" />
+        </Style>
+
+        <Style Selector="Border.mapcard.wrong">
+            <Setter Property="BorderBrush" Value="{StaticResource PlayBrush}" />
+        </Style>
+
         <Style Selector="Border.banner">
             <Setter Property="Background" Value="White" />
             <Setter Property="BorderBrush" Value="{StaticResource FocusBrush}" />
             <Setter Property="BorderThickness" Value="4" />
             <Setter Property="CornerRadius" Value="18" />
             <Setter Property="Padding" Value="34,7" />
+        </Style>
+
+        <Style Selector="Border.banner:not(.shown)">
+            <Setter Property="Opacity" Value="0" />
         </Style>
 
         <Style Selector="Border.banner.correct">
@@ -209,11 +234,16 @@
                        FontSize="13"
                        HorizontalAlignment="Center" />
 
+            <!-- In Recall the answer only appears once the round is over, so the banner is
+                 faded rather than removed: it keeps its place in the layout whatever size
+                 the name inside it turns out to be. Taking it out of the layout instead
+                 would push everything below it up, and under a map that means the world
+                 changes size as you answer. -->
             <Border Classes="banner"
                     Margin="0,8,0,0"
                     HorizontalAlignment="Center"
                     MinHeight="56"
-                    IsVisible="{Binding ShowsAnswerName}"
+                    Classes.shown="{Binding ShowsAnswerName}"
                     Classes.correct="{Binding AnsweredCorrectly}"
                     Classes.wrong="{Binding AnsweredWrongly}">
                 <TextBlock Text="{Binding Prompt}"
@@ -299,6 +329,66 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
+        <!-- Find the City: the world, and wherever on it the player clicks -->
+        <Grid Grid.Row="3"
+              IsVisible="{Binding ShowsMap}"
+              RowDefinitions="*,Auto"
+              Margin="0,14,0,0">
+
+            <!-- Centred rather than stretched so the tile hugs the map's 2:1 shape
+                 instead of framing it with a band of empty card. -->
+            <Border Grid.Row="0"
+                    Classes="mapcard"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Classes.correct="{Binding AnsweredCorrectly}"
+                    Classes.wrong="{Binding AnsweredWrongly}">
+                <views:WorldMapControl Map="{Binding WorldGeometry}"
+                                       Pin="{Binding DroppedPin}"
+                                       Answer="{Binding AnswerPlace}"
+                                       IsDroppable="{Binding IsMapLive}"
+                                       DropCommand="{Binding DropPinCommand}"
+                                       Cursor="Cross" />
+            </Border>
+
+            <!-- Height reserved whether or not anything is in it. The distance only appears
+                 on the reveal, and a row that grows under the map would shrink the map
+                 itself, so it would change size every time a round ended. -->
+            <Panel Grid.Row="1" MinHeight="62">
+                <Border Classes="pill"
+                        IsVisible="{Binding ShowsDistance}"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{Binding DistanceText}" FontSize="18" FontWeight="SemiBold" />
+                </Border>
+            </Panel>
+        </Grid>
+
+        <!-- The answer box for every Recall round, whether the question was drawn as a
+             picture or marked on the map. It sits in the same place either way, so there
+             is one of it rather than one per panel. -->
+        <Grid Grid.Row="3"
+              ColumnDefinitions="*,12,Auto"
+              Width="560"
+              IsVisible="{Binding ShowsNameEntry}"
+              VerticalAlignment="Bottom">
+            <Border Grid.Column="0" Background="White" BorderBrush="{StaticResource FocusBrush}" BorderThickness="4"
+                    CornerRadius="16" Padding="14,4">
+                <AutoCompleteBox ItemsSource="{Binding Choices}"
+                                 SelectedItem="{Binding SelectedChoice}"
+                                 FilterMode="Contains"
+                                 MinimumPrefixLength="1"
+                                 IsTextCompletionEnabled="False"
+                                 PlaceholderText="{Binding AnswerPlaceholder}"
+                                 FontSize="19"
+                                 BorderThickness="0"
+                                 Background="Transparent" />
+            </Border>
+
+            <Button Grid.Column="2" Classes="raised confirm" Content="Guess" FontSize="18"
+                    Command="{Binding SubmitCommand}" IsDefault="True" />
+        </Grid>
+
         <!-- Recall: the flag is the question and the player names the country -->
         <StackPanel Grid.Row="3"
                     IsVisible="{Binding ShowsRecall}"
@@ -317,24 +407,6 @@
                                     VerticalContentAlignment="Stretch" />
                 </Border>
             </Border>
-
-            <Grid ColumnDefinitions="*,12,Auto" Width="560">
-                <Border Grid.Column="0" Background="White" BorderBrush="{StaticResource FocusBrush}" BorderThickness="4"
-                        CornerRadius="16" Padding="14,4">
-                    <AutoCompleteBox ItemsSource="{Binding Choices}"
-                                     SelectedItem="{Binding SelectedChoice}"
-                                     FilterMode="Contains"
-                                     MinimumPrefixLength="1"
-                                     IsTextCompletionEnabled="False"
-                                     PlaceholderText="Type a country…"
-                                     FontSize="19"
-                                     BorderThickness="0"
-                                     Background="Transparent" />
-                </Border>
-
-                <Button Grid.Column="2" Classes="raised confirm" Content="Guess" FontSize="18"
-                        Command="{Binding SubmitCommand}" IsDefault="True" />
-            </Grid>
         </StackPanel>
 
         <!-- Run over -->
@@ -386,7 +458,10 @@
         </StackPanel>
 
         <!-- Result. The row keeps its height so the grid above never jumps. -->
-        <Panel Grid.Row="4" MinHeight="54" IsVisible="{Binding !IsGameOver}">
+        <!-- Reserved tall enough for the message that appears inside it: at 54 the strip
+             still grew by a few pixels when a result landed, which is invisible behind a
+             flag grid but resizes the world map. -->
+        <Panel Grid.Row="4" MinHeight="62" IsVisible="{Binding !IsGameOver}">
         <Border IsVisible="{Binding HasResultMessage}"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"

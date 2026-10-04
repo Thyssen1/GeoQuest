@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.Input;
 using GeoQuest.Models;
-using GeoQuest.Services;
 
 namespace GeoQuest.ViewModels;
 
@@ -28,6 +27,10 @@ public partial class GameSelectViewModel : ViewModelBase
                 "Guess the Border",
                 "The same game played on country outlines, with nothing but the shape to go on.",
                 "#EAFBF0", "#2E9E57"),
+            Card("3", MiniGame.Cities,
+                "Find the City",
+                "A capital is named and you drop a pin on the world — scored by how close you land.",
+                "#FFF3E2", "#E08A1E"),
         ];
 
         GameCard Card(string key, MiniGame game, string name, string summary, string tint, string ink) => new()
@@ -48,6 +51,9 @@ public partial class GameSelectViewModel : ViewModelBase
     public event EventHandler? BackRequested;
 
     public IReadOnlyList<GameCard> Games { get; }
+
+    /// <summary>Derived from the cards, so adding a game cannot leave the hint behind.</summary>
+    public string KeysHint => $"Press 1–{Games.Count}, or Enter for the one you played last";
 
     /// <summary>Keyboard entry point, mirroring how a round takes its number keys.</summary>
     public void ChooseByNumber(string? number)

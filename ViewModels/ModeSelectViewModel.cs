@@ -25,34 +25,67 @@ public partial class ModeSelectViewModel : ViewModelBase
         var progress = history ?? new PlayerHistory();
 
         Game = game;
-        Title = game == MiniGame.Borders ? "Guess the Border" : "Guess the Flag";
 
-        // The one word that makes every mode's description true for either game.
+        Title = game switch
+        {
+            MiniGame.Borders => "Guess the Border",
+            MiniGame.Cities => "Find the City",
+            _ => "Guess the Flag",
+        };
+
+        // The one word that makes every mode's description true for either picture game.
         var subject = game == MiniGame.Borders ? "outline" : "flag";
 
-        Modes =
-        [
-            Card("1", GameMode.Normal,
-                "Normal",
-                $"The classic run. Three {subject}s to start, growing to six, and the clock tightens as you go.",
-                "Lives from Options  ·  Extra lives possible",
-                "#EAF6FC", "#3FA9F5"),
-            Card("2", GameMode.Learning,
-                "Learning",
-                $"Twenty rounds at a steady four {subject}s on a clock that never tightens, drawn from the ones you are actually learning.",
-                "20 rounds  ·  No lives",
-                "#EAFBF0", "#2E9E57"),
-            Card("3", GameMode.Hard,
-                "Hard",
-                $"Opens at four {subject}s and climbs to six. Three lives, and no way to earn any back.",
-                "3 lives  ·  No extra lives",
-                "#FFECEA", "#D9453B"),
-            Card("4", GameMode.Recall,
-                "Recall",
-                $"The question the other way round: one {subject} is shown and you name the country, from all 197.",
-                "3 lives  ·  18 seconds a round  ·  Type to search",
-                "#F1EBFD", "#7A4FD0"),
-        ];
+        // Find the City is not played on a grid at all, so its rounds get harder by
+        // shrinking the target rather than by adding options. The copy has to say so,
+        // because "three flags growing to six" would describe a game that is not there.
+        Modes = game == MiniGame.Cities
+            ?
+            [
+                Card("1", GameMode.Normal,
+                    "Normal",
+                    "The classic run. A generous target to start, shrinking as you get them right, and the clock tightens as you go.",
+                    "Lives from Options  ·  Extra lives possible",
+                    "#EAF6FC", "#3FA9F5"),
+                Card("2", GameMode.Learning,
+                    "Learning",
+                    "Twenty rounds at a steady, forgiving target on a clock that never tightens, drawn from the capitals you are actually learning.",
+                    "20 rounds  ·  No lives",
+                    "#EAFBF0", "#2E9E57"),
+                Card("3", GameMode.Hard,
+                    "Hard",
+                    "Opens on a tight target and closes it further. Three lives, and no way to earn any back.",
+                    "3 lives  ·  No extra lives",
+                    "#FFECEA", "#D9453B"),
+                Card("4", GameMode.Recall,
+                    "Recall",
+                    "The question the other way round: a city is marked on the map and you name it, from all 197 capitals.",
+                    "3 lives  ·  18 seconds a round  ·  Type to search",
+                    "#F1EBFD", "#7A4FD0"),
+            ]
+            :
+            [
+                Card("1", GameMode.Normal,
+                    "Normal",
+                    $"The classic run. Three {subject}s to start, growing to six, and the clock tightens as you go.",
+                    "Lives from Options  ·  Extra lives possible",
+                    "#EAF6FC", "#3FA9F5"),
+                Card("2", GameMode.Learning,
+                    "Learning",
+                    $"Twenty rounds at a steady four {subject}s on a clock that never tightens, drawn from the ones you are actually learning.",
+                    "20 rounds  ·  No lives",
+                    "#EAFBF0", "#2E9E57"),
+                Card("3", GameMode.Hard,
+                    "Hard",
+                    $"Opens at four {subject}s and climbs to six. Three lives, and no way to earn any back.",
+                    "3 lives  ·  No extra lives",
+                    "#FFECEA", "#D9453B"),
+                Card("4", GameMode.Recall,
+                    "Recall",
+                    $"The question the other way round: one {subject} is shown and you name the country, from all 197.",
+                    "3 lives  ·  18 seconds a round  ·  Type to search",
+                    "#F1EBFD", "#7A4FD0"),
+            ];
 
         ModeCard Card(string key, GameMode mode, string name, string summary, string terms, string tint, string ink) => new()
         {

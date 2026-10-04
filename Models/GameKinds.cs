@@ -12,6 +12,9 @@ public enum MiniGame
 
     /// <summary>Guess the Border: the country is drawn as its outline.</summary>
     Borders,
+
+    /// <summary>Find the City: a capital is named, and placed by dropping a pin on the world.</summary>
+    Cities,
 }
 
 /// <summary>How a run is played. Chosen per run rather than configured.</summary>
@@ -30,12 +33,18 @@ public enum GameMode
     Recall,
 }
 
-/// <summary>How the player answers: by pointing at a tile, or by naming the country.</summary>
+/// <summary>
+/// How the player answers: by pointing at a tile, by naming the country, or by dropping a
+/// pin on the map. The first two pick from what is offered; the third is the only one with
+/// no wrong answer to choose, only a distance to be judged on.
+/// </summary>
 public enum RoundInput
 {
     Grid,
 
     Name,
+
+    Pin,
 }
 
 /// <summary>
@@ -47,4 +56,7 @@ public enum RoundSubject
     Flag,
 
     Outline,
+
+    /// <summary>A place on the world map, named rather than drawn.</summary>
+    Place,
 }

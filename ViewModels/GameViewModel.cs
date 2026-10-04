@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -22,7 +23,8 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     private static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(50);
 
     private readonly IQuestionGenerator _generator;
-    private readonly ICountryArtwork _artwork;
+    /// <summary>Null in Find the City, which draws one map rather than a picture per country.</summary>
+    private readonly ICountryArtwork? _artwork;
     private readonly FileScoreStore _scores;
     private readonly DifficultyProfile _profile;
     private readonly PlayerHistory _history;
@@ -43,6 +45,8 @@ public partial class GameViewModel : ViewModelBase, IDisposable
 
     private FlagQuestion? _question;
     private TimeSpan _allowed;
+
+    private readonly Dictionary<string, Capital>? _capitals;
 
     [ObservableProperty]
     private int _score;
@@ -79,10 +83,14 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsGrid))]
     [NotifyPropertyChangedFor(nameof(ShowsRecall))]
+    [NotifyPropertyChangedFor(nameof(ShowsMap))]
+    [NotifyPropertyChangedFor(nameof(IsMapLive))]
     private bool _isGameOver;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsAnswerName))]
+    [NotifyPropertyChangedFor(nameof(IsMapLive))]
+    [NotifyPropertyChangedFor(nameof(ShowsDistance))]
     private bool _isRevealing;
 
     [ObservableProperty]
@@ -117,20 +125,33 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private string? _selectedChoice;
 
+    /// <summary>Where the player last clicked, or null before they have.</summary>
+    [ObservableProperty]
+    private GeoPoint? _droppedPin;
+
+    /// <summary>Where the city actually is. Set only once the round is over.</summary>
+    [ObservableProperty]
+    private GeoPoint? _answerPlace;
+
+    /// <summary>How far the last pin landed from the city, for the scoreboard to show.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DistanceText))]
+    private double _lastDistanceKm;
+
     public event EventHandler? MenuRequested;
 
     public GameViewModel(
         IQuestionGenerator generator,
-        ICountryArtwork artwork,
+        ICountryArtwork? artwork,
         FileScoreStore scores,
         DifficultyProfile? profile = null,
         SystemSoundPlayer? sounds = null,
         Random? random = null,
         PlayerHistory? history = null,
-        IReadOnlyList<Country>? choices = null)
+        IReadOnlyList<Country>? choices = null,
+        CityLoader? cities = null)
     {
         ArgumentNullException.ThrowIfNull(generator);
-        ArgumentNullException.ThrowIfNull(artwork);
         ArgumentNullException.ThrowIfNull(scores);
 
         _generator = generator;
@@ -140,11 +161,31 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         _profile = profile ?? DifficultyProfile.Normal;
         _history = history ?? new PlayerHistory();
 
-        // Sorted once: the recall list is the same 197 names every round.
-        var answerable = (choices ?? []).OrderBy(country => country.Name, StringComparer.CurrentCulture).ToArray();
+        // Find the City asks about a country's capital, so it runs on the same generator
+        // and the same pool as every other game: the generated country is looked up here
+        // and becomes a place to find rather than a picture to recognise.
+        if (cities is not null)
+        {
+            _capitals = new Dictionary<string, Capital>(StringComparer.OrdinalIgnoreCase);
 
-        _byName = answerable.ToDictionary(country => country.Name, StringComparer.CurrentCulture);
-        Choices = answerable.Select(country => country.Name).ToArray();
+            foreach (var capital in cities.Capitals())
+            {
+                _capitals[capital.Code] = capital;
+            }
+
+            WorldGeometry = cities.World();
+        }
+
+        // What a recall round is answered with. Every game names the thing it showed, so a
+        // city run offers capitals where the others offer countries — the same 197 entries
+        // either way, because each capital stands for exactly one country.
+        var answerable = (choices ?? [])
+            .Select(country => (Country: country, Name: AnswerName(country)))
+            .OrderBy(entry => entry.Name, StringComparer.CurrentCulture)
+            .ToArray();
+
+        _byName = answerable.ToDictionary(entry => entry.Name, entry => entry.Country, StringComparer.CurrentCulture);
+        Choices = answerable.Select(entry => entry.Name).ToArray();
 
         // Muting happens where the run is composed: a muted game is simply given no player.
         _sounds = sounds;
@@ -168,9 +209,36 @@ public partial class GameViewModel : ViewModelBase, IDisposable
 
     public bool IsNameInput => _profile.Input == RoundInput.Name;
 
-    public string PromptHeading => IsNameInput
-        ? "Which country is this?"
-        : _profile.Subject == RoundSubject.Outline ? "Which outline belongs to" : "Which flag belongs to";
+    public bool IsPinInput => _profile.Input == RoundInput.Pin;
+
+    /// <summary>The world, drawn once and shared by every round of a city run.</summary>
+    public Geometry? WorldGeometry { get; }
+
+    /// <summary>
+    /// What this country is called in this game: its capital in a city run, its own name
+    /// everywhere else. The prompt, the answer list and the reveal all go through here, so
+    /// none of them can disagree about what the round was asking.
+    /// </summary>
+    private string AnswerName(Country country) =>
+        _profile.Subject == RoundSubject.Place && _capitals is not null &&
+        _capitals.TryGetValue(country.Code, out var capital)
+            ? capital.Name
+            : country.Name;
+
+    /// <summary>The capital this round is about, or null in a game that is not about cities.</summary>
+    public Capital? CurrentCapital =>
+        _question is not null && _capitals is not null && _capitals.TryGetValue(_question.Answer.Code, out var capital)
+            ? capital
+            : null;
+
+    public string PromptHeading => _profile.Input switch
+    {
+        RoundInput.Pin => "Find the capital of",
+        RoundInput.Name => _profile.Subject == RoundSubject.Place
+            ? "Which city is marked?"
+            : "Which country is this?",
+        _ => _profile.Subject == RoundSubject.Outline ? "Which outline belongs to" : "Which flag belongs to",
+    };
 
     /// <summary>In Recall the country is the answer, so its name only appears once the round is over.</summary>
     public bool ShowsAnswerName => !IsNameInput || IsRevealing;
@@ -178,11 +246,31 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     /// <summary>The result strip keeps its height between rounds, but not its chrome.</summary>
     public bool HasResultMessage => !string.IsNullOrEmpty(ResultMessage);
 
-    public bool ShowsGrid => !IsGameOver && !IsNameInput;
+    public bool ShowsGrid => !IsGameOver && _profile.Input == RoundInput.Grid;
 
-    public bool ShowsRecall => !IsGameOver && IsNameInput;
+    /// <summary>Picture recall. A city run names what is marked on the map instead.</summary>
+    public bool ShowsRecall => !IsGameOver && IsNameInput && _profile.Subject != RoundSubject.Place;
 
-    public string LivesText => string.Concat(Enumerable.Repeat("♥", Math.Max(0, Lives)));
+    /// <summary>The answer box, wherever the question happens to be drawn.</summary>
+    public bool ShowsNameEntry => !IsGameOver && IsNameInput;
+
+    /// <summary>What that box is asking for, which is the only thing it changes per game.</summary>
+    public string AnswerPlaceholder =>
+        _profile.Subject == RoundSubject.Place ? "Type a city…" : "Type a country…";
+
+    /// <summary>
+    /// The map is on screen for both ways a city round can be played: dropping a pin on it,
+    /// and being shown a pin on it to name.
+    /// </summary>
+    public bool ShowsMap => !IsGameOver && _profile.Subject == RoundSubject.Place;
+
+    /// <summary>A click only counts while the round is live.</summary>
+    public bool IsMapLive => ShowsMap && !IsRevealing;
+
+    /// <summary>The distance strip only has something to say once a pin has been judged.</summary>
+    public bool ShowsDistance => IsPinInput && IsRevealing;
+
+    public string DistanceText => Describe(LastDistanceKm);
 
     public bool HasLives => _profile.HasLives;
 
@@ -193,9 +281,12 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     /// <summary>A bounded session is finished rather than lost, and should not be told otherwise.</summary>
     public string EndTitle => _profile.IsBounded ? "Session complete" : "Run over";
 
-    public string AnswerKeysText => IsNameInput
-        ? "Type to search  ·  Enter to answer  ·  Esc for the menu"
-        : $"Press 1–{OptionCount} to answer  ·  Esc for the menu";
+    public string AnswerKeysText => _profile.Input switch
+    {
+        RoundInput.Pin => "Click the map to drop a pin  ·  Esc for the menu",
+        RoundInput.Name => "Type to search  ·  Enter to answer  ·  Esc for the menu",
+        _ => $"Press 1–{OptionCount} to answer  ·  Esc for the menu",
+    };
 
     public bool ShowsMastery => _profile.ShowsMastery;
 
@@ -254,6 +345,28 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         BeginReveal();
     }
 
+    /// <summary>
+    /// A click on the map. The control has already turned pixels into a place, so all that
+    /// is left is to judge it — there is no option to mark right or wrong, only a pin to
+    /// leave where the player put it and the real city to show beside it.
+    /// </summary>
+    [RelayCommand]
+    private void DropPin(GeoPoint place)
+    {
+        if (!IsPinInput || CurrentCapital is null || !CanAnswer())
+        {
+            return;
+        }
+
+        DroppedPin = place;
+
+        CommitPin(place);
+
+        AnswerPlace = CurrentCapital.Location;
+
+        BeginReveal();
+    }
+
     [RelayCommand(CanExecute = nameof(CanSubmit))]
     private void Submit()
     {
@@ -288,50 +401,107 @@ public partial class GameViewModel : ViewModelBase, IDisposable
 
         if (correct)
         {
-            Streak++;
-            BestStreak = Math.Max(BestStreak, Streak);
-            CorrectAnswers++;
-
-            var award = GameRules.ScoreFor(remaining, _allowed, Streak);
-
-            AddScore(award);
-
-            LastAward = award;
-            ShowsAward = true;
-
-            if (GameRules.AwardsBonusLife(Lives, _random.NextDouble(), _profile.BonusLifeChance))
-            {
-                Lives++;
-                HasWonLife = true;
-
-                ResultMessage = "Correct — extra life!";
-                Play(GameSound.BonusLife);
-            }
-            else
-            {
-                ResultMessage = Streak > 1 ? $"Correct — {Streak} in a row" : "Correct";
-                Play(GameSound.Correct);
-            }
-
-            AnsweredCorrectly = true;
+            TakeCorrect(GameRules.ScoreFor(remaining, _allowed, Streak + 1));
 
             return true;
         }
 
+        // Naming the wrong country teaches nothing unless the right one is named back.
+        // Pointing at the wrong flag is better explained by which flag was pointed at.
+        TakeWrong(IsNameInput
+            ? $"That was {AnswerName(_question.Answer)}"
+            : $"That was {AnswerName(picked)}");
+
+        return false;
+    }
+
+    /// <summary>
+    /// A pin answer. Nothing was chosen, so there is no wrong option to name back — only a
+    /// distance, and whether the mode accepts it at this point in the run.
+    /// </summary>
+    private bool CommitPin(GeoPoint dropped)
+    {
+        var remaining = _allowed - _clock.Elapsed;
+        if (remaining < TimeSpan.Zero)
+        {
+            remaining = TimeSpan.Zero;
+        }
+
+        _roundTimer.Stop();
+        _clock.Stop();
+
+        var city = CurrentCapital!;
+        var distance = dropped.DistanceTo(city.Location);
+        var tolerance = GameRules.ToleranceFor(CorrectAnswers, _profile);
+        var correct = distance <= tolerance;
+
+        LastDistanceKm = distance;
+        Record(correct, LearningRules.IsFast(remaining, _allowed));
+
+        if (correct)
+        {
+            TakeCorrect(GameRules.ScoreForPin(distance, tolerance, remaining, _allowed, Streak + 1));
+
+            return true;
+        }
+
+        TakeWrong($"That was {city.Name}");
+
+        return false;
+    }
+
+    /// <summary>
+    /// How far off, rounded the way a person would say it rather than to a false precision.
+    /// The map is about a thousand pixels across, so the last digits of a distance say more
+    /// about which pixel was clicked than about what the player knew.
+    /// </summary>
+    private static string Describe(double distanceKm) => distanceKm switch
+    {
+        < 10d => "Spot on",
+        < 1000d => $"{Math.Round(distanceKm / 10d) * 10d:N0} km away",
+        _ => $"{Math.Round(distanceKm / 100d) * 100d:N0} km away",
+    };
+
+    /// <summary>What a right answer does, however it was given.</summary>
+    private void TakeCorrect(int award)
+    {
+        Streak++;
+        BestStreak = Math.Max(BestStreak, Streak);
+        CorrectAnswers++;
+
+        AddScore(award);
+
+        LastAward = award;
+        ShowsAward = true;
+
+        if (GameRules.AwardsBonusLife(Lives, _random.NextDouble(), _profile.BonusLifeChance))
+        {
+            Lives++;
+            HasWonLife = true;
+
+            ResultMessage = "Correct — extra life!";
+            Play(GameSound.BonusLife);
+        }
+        else
+        {
+            ResultMessage = Streak > 1 ? $"Correct — {Streak} in a row" : "Correct";
+            Play(GameSound.Correct);
+        }
+
+        AnsweredCorrectly = true;
+    }
+
+    /// <summary>And what a wrong one does.</summary>
+    private void TakeWrong(string message)
+    {
         AnsweredWrongly = true;
 
         Streak = 0;
         LoseLife();
 
-        // Naming the wrong country teaches nothing unless the right one is named back.
-        // Pointing at the wrong flag is better explained by which flag was pointed at.
-        ResultMessage = IsNameInput
-            ? $"That was {_question.Answer.Name}"
-            : $"That was {picked.Name}";
+        ResultMessage = message;
 
         Play(GameSound.Wrong);
-
-        return false;
     }
 
     private bool CanAnswer() => _question is not null && !IsRevealing && !IsGameOver;
@@ -430,7 +600,10 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         RoundsPlayed++;
 
         _question = _generator.Next(OptionCount);
-        Prompt = _question.Answer.Name;
+
+        // In a city run the country is only how the question is drawn from the pool; what
+        // the player is shown, and judged on, is its capital.
+        Prompt = AnswerName(_question.Answer);
 
         // The reveal delay has already given the player time to read the previous
         // result; carrying it into a live round just reads as stale feedback.
@@ -443,17 +616,30 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         AnsweredCorrectly = false;
         AnsweredWrongly = false;
         ShowsAward = false;
+        DroppedPin = null;
+        AnswerPlace = null;
 
+        OnPropertyChanged(nameof(CurrentCapital));
+
+        // Naming a marked city makes the marker the question, so it goes up with the round
+        // rather than waiting for the reveal the way a dropped pin's answer does.
+        if (IsNameInput && _profile.Subject == RoundSubject.Place)
+        {
+            AnswerPlace = CurrentCapital?.Location;
+        }
+
+        // A pin round builds nothing else here: the map is the same every round, and the
+        // question is a city's name rather than anything drawn.
         if (IsNameInput)
         {
             // The flag is the question here, so the generated options go unused.
-            PromptArt = _artwork.For(_question.Answer.Code);
+            PromptArt = _artwork?.For(_question.Answer.Code);
         }
-        else
+        else if (!IsPinInput)
         {
             foreach (var country in _question.Options)
             {
-                Options.Add(new FlagOptionViewModel(country, _artwork.For(country.Code))
+                Options.Add(new FlagOptionViewModel(country, _artwork?.For(country.Code))
                 {
                     Key = (Options.Count + 1).ToString(),
                 });
@@ -547,6 +733,14 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     {
         if (_question is null)
         {
+            return;
+        }
+
+        // A pin round reveals by marking the city on the map rather than lighting a tile,
+        // which matters most on a timeout, where no pin was ever dropped to compare against.
+        if (IsPinInput)
+        {
+            AnswerPlace = CurrentCapital?.Location;
             return;
         }
 

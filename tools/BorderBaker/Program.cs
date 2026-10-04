@@ -45,10 +45,31 @@ internal static class Program
     /// <summary>Coordinates are stored to this many decimals of a unit square.</summary>
     private const int Decimals = 4;
 
+    /// <summary>
+    /// Simplification for the world map, in world units — about a pixel on a map drawn a
+    /// thousand across. The world map is seen whole and small, where the per-country
+    /// outlines are seen one at a time and large, so it can afford to be much coarser.
+    /// </summary>
+    private const double WorldTolerance = 0.0009d;
+
+    /// <summary>
+    /// Islands smaller than this, in square degrees, are left off the world map. Roughly a
+    /// hundred square kilometres at the equator: small enough to keep Malta, large enough
+    /// to drop the specks that would cost more bytes than they add recognition.
+    /// </summary>
+    private const double WorldIslandFloor = 0.01d;
+
+    /// <summary>
+    /// Landmasses kept per country before the floor applies at all, largest first. Enough
+    /// for an archipelago nation to show the atoll its capital is actually on.
+    /// </summary>
+    private const int WorldKeepPerCountry = 8;
+
     private static int Main(string[] args)
     {
         string? input = null;
         string? output = null;
+        string? world = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -59,6 +80,12 @@ internal static class Program
                     break;
                 case "--output" when i + 1 < args.Length:
                     output = args[++i];
+                    break;
+                case "--world" when i + 1 < args.Length:
+                    world = args[++i];
+                    break;
+                case "--world":
+                    world = string.Empty;
                     break;
                 default:
                     Console.Error.WriteLine($"Unrecognised argument: {args[i]}");
@@ -118,6 +145,26 @@ internal static class Program
         Console.WriteLine($"Baked {baked.Count} outlines, {points} points -> {output}");
         Console.WriteLine($"{new FileInfo(output).Length / 1024} KB");
 
+        if (world is not null)
+        {
+            if (world.Length == 0)
+            {
+                world = Path.Combine(assets, "Maps", "world.json");
+            }
+
+            // Every feature, not just the pool: a map with Antarctica and Greenland missing
+            // because they are not quiz answers would read as a broken map rather than a
+            // deliberate one.
+            var landmasses = ReadEveryShape(input).SelectMany(BakeWorld).ToArray();
+
+            Directory.CreateDirectory(Path.GetDirectoryName(world)!);
+            File.WriteAllText(world, SerialiseWorld(landmasses));
+
+            var worldPoints = landmasses.Sum(ring => ring.Length / 2);
+            Console.WriteLine($"Baked world map, {landmasses.Length} rings, {worldPoints} points -> {world}");
+            Console.WriteLine($"{new FileInfo(world).Length / 1024} KB");
+        }
+
         if (missing.Count > 0)
         {
             Console.Error.WriteLine($"No shape for {missing.Count}: {string.Join(", ", missing)}");
@@ -153,6 +200,25 @@ internal static class Program
             {
                 shapes[code] = reader.Geometry;
             }
+        }
+
+        return shapes;
+    }
+
+    /// <summary>
+    /// Every geometry in the shapefile, coded or not. <see cref="ReadShapes"/> keys by ISO
+    /// code and so drops Antarctica, Kosovo and Somaliland, which is right for a quiz pool
+    /// and wrong for a map, where they would leave holes in the land.
+    /// </summary>
+    private static List<Geometry> ReadEveryShape(string shapefile)
+    {
+        var shapes = new List<Geometry>();
+
+        using var reader = new ShapefileDataReader(shapefile, GeometryFactory.Default);
+
+        while (reader.Read())
+        {
+            shapes.Add(reader.Geometry);
         }
 
         return shapes;
@@ -296,6 +362,73 @@ internal static class Program
     private static (double X, double Y) Project(Coordinate coordinate, bool wraps) =>
         (wraps && coordinate.X < 0 ? coordinate.X + 360d : coordinate.X, coordinate.Y);
 
+    /// <summary>
+    /// Every country on one equirectangular map, for Find the City to drop pins onto.
+    ///
+    /// This is the opposite of <see cref="Bake"/> in every choice it makes. Outlines are
+    /// scaled onto their own squares, squeezed by latitude and stripped of outlying islands,
+    /// because each is shown alone and has to be recognisable. The world map is shown whole,
+    /// so every country has to stay where it actually is: one shared projection, no squeeze,
+    /// no wrap, and islands kept unless they are too small to see.
+    ///
+    /// Both axes are divided by 360, which keeps the map's 2:1 proportions in the numbers
+    /// themselves — x lands in 0..1, y in 0..0.5 — so nothing downstream has to know the
+    /// aspect ratio to draw it undistorted. Inverting it is two multiplications, which
+    /// matters because every click the player makes has to be turned back into a position.
+    /// </summary>
+    private static double[][] BakeWorld(Geometry geometry)
+    {
+        var factory = GeometryFactory.Default;
+        var rings = new List<double[]>();
+        var ordered = Flatten(geometry).OrderByDescending(polygon => polygon.Area).ToList();
+
+        for (var index = 0; index < ordered.Count; index++)
+        {
+            var polygon = ordered[index];
+
+            // A country's biggest landmasses are always drawn, however small they are.
+            // Tonga and Tuvalu are below any sensible island floor, and a map that leaves
+            // them out is one the game can ask unanswerable questions about. Several are
+            // kept rather than one because Kiribati's largest island is Kiritimati while
+            // its capital sits on Tarawa, three thousand kilometres away.
+            if (index >= WorldKeepPerCountry && polygon.Area < WorldIslandFloor)
+            {
+                continue;
+            }
+
+            var unit = polygon.ExteriorRing.Coordinates
+                .Select(c => new Coordinate((c.X + 180d) / 360d, (90d - c.Y) / 360d))
+                .ToArray();
+
+            // Simplifying a small island at the tolerance a continent wants erases it, so
+            // the tolerance is also capped against the island's own size.
+            var width = unit.Max(c => c.X) - unit.Min(c => c.X);
+            var height = unit.Max(c => c.Y) - unit.Min(c => c.Y);
+            var tolerance = Math.Min(WorldTolerance, Math.Max(width, height) / 8d);
+
+            var simplified = DouglasPeuckerSimplifier
+                .Simplify(factory.CreateLineString(unit), tolerance)
+                .Coordinates;
+
+            if (simplified.Length < 4)
+            {
+                continue;
+            }
+
+            var flat = new double[simplified.Length * 2];
+
+            for (var i = 0; i < simplified.Length; i++)
+            {
+                flat[i * 2] = Math.Round(simplified[i].X, Decimals);
+                flat[(i * 2) + 1] = Math.Round(simplified[i].Y, Decimals);
+            }
+
+            rings.Add(flat);
+        }
+
+        return [.. rings];
+    }
+
     private static IEnumerable<Polygon> Flatten(Geometry geometry) => geometry switch
     {
         Polygon polygon => [polygon],
@@ -307,6 +440,43 @@ internal static class Program
     /// Written by hand rather than through the serialiser: coordinates go out as flat
     /// number arrays, which is roughly half the bytes of a list of pairs.
     /// </summary>
+    /// <summary>
+    /// The world map: a flat list of rings rather than a map keyed by country, because
+    /// nothing asks it which country a ring belongs to. Drawn filled it is the land; drawn
+    /// stroked as well, the same rings are the borders.
+    /// </summary>
+    private static string SerialiseWorld(double[][] rings)
+    {
+        var builder = new StringBuilder();
+        builder.Append("{\"version\":1,\"rings\":[");
+
+        for (var i = 0; i < rings.Length; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append(',');
+            }
+
+            builder.Append('\n').Append('[');
+
+            for (var j = 0; j < rings[i].Length; j++)
+            {
+                if (j > 0)
+                {
+                    builder.Append(',');
+                }
+
+                builder.Append(rings[i][j].ToString(CultureInfo.InvariantCulture));
+            }
+
+            builder.Append(']');
+        }
+
+        builder.Append("\n]}");
+
+        return builder.ToString();
+    }
+
     private static string Serialise(Dictionary<string, double[][]> baked)
     {
         var builder = new StringBuilder();

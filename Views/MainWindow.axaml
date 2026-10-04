@@ -7,8 +7,9 @@
         x:Class="GeoQuest.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Width="900" Height="720"
+        Width="1150" Height="800"
         MinWidth="560" MinHeight="540"
+        WindowStartupLocation="CenterScreen"
         Background="{StaticResource SkyBrush}"
         Title="GeoQuest">
 

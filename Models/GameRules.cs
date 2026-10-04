@@ -45,6 +45,39 @@ public static class GameRules
         return Math.Min(count, profile.MaxOptions);
     }
     
+    /// <summary>
+    /// How far a pin may land from the city and still count, at this point in the run. A
+    /// pin round has no options to add, so it gets harder the only way it can: the target
+    /// shrinks on the same thresholds that widen the grid in the other games, which keeps
+    /// one difficulty curve across all three rather than two that have to be tuned apart.
+    /// </summary>
+    public static double ToleranceFor(int correctAnswers, DifficultyProfile profile)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(correctAnswers);
+        ArgumentNullException.ThrowIfNull(profile);
+
+        var steps = Thresholds.Length - 1;
+
+        if (steps <= 0 || profile.OpeningToleranceKm <= profile.MinimumToleranceKm)
+        {
+            return profile.MinimumToleranceKm;
+        }
+
+        var reached = 0;
+
+        foreach (var threshold in Thresholds)
+        {
+            if (correctAnswers >= threshold)
+            {
+                reached = Array.IndexOf(Thresholds, threshold);
+            }
+        }
+
+        var span = profile.OpeningToleranceKm - profile.MinimumToleranceKm;
+
+        return profile.OpeningToleranceKm - (span * reached / steps);
+    }
+
     public static TimeSpan RoundDurationFor(int correctAnswers, DifficultyProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
@@ -57,6 +90,60 @@ public static class GameRules
     
     public static bool AwardsBonusLife(int lives, double roll, double chance) =>
         lives < MaxLives && roll < chance;
+
+    /// <summary>A pin this close to the city is treated as dead on, and scores in full.</summary>
+    public const double PerfectPinKm = 50d;
+
+    /// <summary>The least a pin inside the tolerance can be worth, as a share of full marks.</summary>
+    private const double PinFloor = 0.25d;
+
+    /// <summary>
+    /// How good a pin was, from 1 for a direct hit down to 0 at the edge of what the mode
+    /// accepts. The flat band inside <see cref="PerfectPinKm"/> exists because the map is
+    /// about a thousand pixels wide, where fifty kilometres is less than a pixel: without
+    /// it the score would turn on which pixel a click landed in rather than on knowledge.
+    /// </summary>
+    public static double PinAccuracy(double distanceKm, double toleranceKm)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(distanceKm);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(toleranceKm);
+
+        if (distanceKm <= PerfectPinKm)
+        {
+            return 1d;
+        }
+
+        if (distanceKm >= toleranceKm)
+        {
+            return 0d;
+        }
+
+        return 1d - ((distanceKm - PerfectPinKm) / (toleranceKm - PerfectPinKm));
+    }
+
+    /// <summary>
+    /// What a pin is worth: the same speed and streak scoring the other games use, scaled
+    /// by how close it landed. A pin that only just counts still earns a quarter, because
+    /// knowing roughly where a city is deserves more than nothing.
+    /// </summary>
+    public static int ScoreForPin(
+        double distanceKm,
+        double toleranceKm,
+        TimeSpan remaining,
+        TimeSpan allowed,
+        int streak)
+    {
+        var accuracy = PinAccuracy(distanceKm, toleranceKm);
+
+        if (accuracy <= 0d)
+        {
+            return 0;
+        }
+
+        var scaled = PinFloor + ((1d - PinFloor) * accuracy);
+
+        return (int)Math.Round(ScoreFor(remaining, allowed, streak) * scaled);
+    }
     
     public static int ScoreFor(TimeSpan remaining, TimeSpan allowed, int streak)
     {
