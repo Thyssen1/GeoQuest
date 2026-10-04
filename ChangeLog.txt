@@ -1,5 +1,11 @@
 Changelog
 
+1.3.0
+- Added Guess the Border: a country is drawn as its outline instead of its flag
+- Play now asks which game first, then which mode; all four modes exist for both games
+- Each game keeps its own best scores and its own learning progress
+- Fixed the answer grid sitting left of centre
+
 1.2.0
 - Added recall mode: a flag is shown and you name the country from all 197
 - New look: bright sky theme with tactile buttons, oversized answer feedback and progress on the menu

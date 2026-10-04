@@ -28,7 +28,7 @@ public sealed class LearningQuestionGenerator : IQuestionGenerator
     private readonly Random _random;
     private readonly Queue<string> _recent = new();
 
-    public LearningQuestionGenerator(ICountryRepository repository, PlayerHistory history, Random? random = null)
+    public LearningQuestionGenerator(JsonCountryRepository repository, PlayerHistory history, Random? random = null)
     {
         ArgumentNullException.ThrowIfNull(repository);
         ArgumentNullException.ThrowIfNull(history);

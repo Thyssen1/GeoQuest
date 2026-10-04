@@ -9,7 +9,7 @@ namespace GeoQuest.Services;
 /// Stores settings as JSON under the user's application data directory, alongside
 /// the score file. See <see cref="FileScoreStore"/> for why that location is used.
 /// </summary>
-public sealed class FileSettingsStore : ISettingsStore
+public sealed class FileSettingsStore
 {
     private const string FolderName = "GeoQuest";
     private const string FileName = "settings.json";

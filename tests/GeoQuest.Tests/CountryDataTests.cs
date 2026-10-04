@@ -6,7 +6,7 @@ namespace GeoQuest.Tests;
 
 public class CountryDataTests
 {
-    private static ICountryRepository Load()
+    private static JsonCountryRepository Load()
     {
         using var stream = File.OpenRead(TestPaths.CountriesJson);
         return JsonCountryRepository.Load(stream);
@@ -119,7 +119,7 @@ public class CountryDataTests
         Assert.True(orphanImages.Length == 0, "flag images with no country entry: " + string.Join(", ", orphanImages));
     }
 
-    private static ICountryRepository LoadFrom(string json)
+    private static JsonCountryRepository LoadFrom(string json)
     {
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
         return JsonCountryRepository.Load(stream);

@@ -8,9 +8,12 @@ using GeoQuest.Models;
 namespace GeoQuest.Services;
 
 /// <summary>
-/// Stores the best score per mode as a small JSON file under the user's application data
+/// Stores the best score per mini-game and mode as a small JSON file under the user's
+/// application data directory. <see cref="Environment.SpecialFolder.ApplicationData"/>
+/// resolves to a writable per-user location on Windows, macOS and Linux alike, so this
+/// carries no desktop-only assumption and will keep working when the project targets mobile.
 /// </summary>
-public sealed class FileScoreStore : IScoreStore
+public sealed class FileScoreStore
 {
     private const string FolderName = "GeoQuest";
     private const string FileName = "player.json";
@@ -25,18 +28,25 @@ public sealed class FileScoreStore : IScoreStore
             FileName);
     }
 
-    public int LoadBestScore(GameMode mode) => Read().GetValueOrDefault(mode.ToString());
+    private static string Key(MiniGame game, GameMode mode) => $"{game}.{mode}";
 
-    public void SaveBestScore(GameMode mode, int score)
+    public int LoadBestScore(MiniGame game, GameMode mode) => Read().GetValueOrDefault(Key(game, mode));
+
+    public void SaveBestScore(MiniGame game, GameMode mode, int score)
     {
         var scores = Read();
-        scores[mode.ToString()] = Math.Max(0, score);
+        scores[Key(game, mode)] = Math.Max(0, score);
 
         Write(scores);
     }
 
     public void ClearBestScores() => Write(new Dictionary<string, int>());
-    
+
+    /// <summary>
+    /// Reads the stored scores, migrating older shapes as it goes. A file from before
+    /// mini-games existed keys scores by mode alone, and one from before modes existed
+    /// holds a single number; both were earned playing the flags.
+    /// </summary>
     private Dictionary<string, int> Read()
     {
         var scores = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -57,15 +67,20 @@ public sealed class FileScoreStore : IScoreStore
 
             foreach (var (name, score) in record.BestScores ?? new Dictionary<string, int>())
             {
-                if (Enum.TryParse<GameMode>(name, out var mode))
+                // A negative or absurd value is treated as "no score yet" rather than trusted.
+                var value = Math.Max(0, score);
+
+                if (TryParseKey(name, out var key))
                 {
-                    scores[mode.ToString()] = Math.Max(0, score);
+                    scores[key] = value;
                 }
             }
 
-            if (!scores.ContainsKey(nameof(GameMode.Normal)) && record.BestScore is int legacy)
+            var normal = Key(MiniGame.Flags, GameMode.Normal);
+
+            if (!scores.ContainsKey(normal) && record.BestScore is int legacy)
             {
-                scores[nameof(GameMode.Normal)] = Math.Max(0, legacy);
+                scores[normal] = Math.Max(0, legacy);
             }
 
             return scores;
@@ -76,6 +91,34 @@ public sealed class FileScoreStore : IScoreStore
             scores.Clear();
             return scores;
         }
+    }
+
+    /// <summary>Accepts "Flags.Normal" and the older bare "Normal", which meant the flags.</summary>
+    private static bool TryParseKey(string name, out string key)
+    {
+        key = string.Empty;
+
+        var dot = name.IndexOf('.');
+
+        if (dot < 0)
+        {
+            if (!Enum.TryParse<GameMode>(name, out var only))
+            {
+                return false;
+            }
+
+            key = Key(MiniGame.Flags, only);
+            return true;
+        }
+
+        if (!Enum.TryParse<MiniGame>(name[..dot], out var game) ||
+            !Enum.TryParse<GameMode>(name[(dot + 1)..], out var mode))
+        {
+            return false;
+        }
+
+        key = Key(game, mode);
+        return true;
     }
 
     private void Write(Dictionary<string, int> scores)
@@ -99,6 +142,10 @@ public sealed class FileScoreStore : IScoreStore
 
     private sealed record PlayerRecord
     {
+        /// <summary>
+        /// The single score written before modes existed. Read so an upgrade keeps it,
+        /// never written again — the migration happens the first time a score is saved.
+        /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? BestScore { get; init; }
 

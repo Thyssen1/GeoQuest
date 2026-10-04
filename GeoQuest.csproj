@@ -9,11 +9,16 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>1.1.0</Version>
+    <Version>1.3.0</Version>
     <Product>GeoQuest</Product>
     <Description>A fast-paced geography trivia game built with Avalonia UI.</Description>
     <Authors>Thyssen</Authors>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The test suite drives a run past its reveal without waiting on the timer. -->
+    <InternalsVisibleTo Include="GeoQuest.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Dev-time tooling and tests live outside the app; the root project sits at the

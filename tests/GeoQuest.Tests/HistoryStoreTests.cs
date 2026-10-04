@@ -13,7 +13,7 @@ public class HistoryStoreTests : IDisposable
     [Fact]
     public void Nothing_stored_reads_as_a_blank_slate()
     {
-        var history = new FileHistoryStore(PathFor("absent.json")).Load(197);
+        var history = new FileHistoryStore(PathFor("absent.json")).Load(MiniGame.Flags, 197);
 
         Assert.Empty(history.Flags);
         Assert.Equal(0, history.Graduated);
@@ -33,9 +33,9 @@ public class HistoryStoreTests : IDisposable
 
         history.Record("se", correct: false, fast: false);
 
-        new FileHistoryStore(path).Save(history);
+        new FileHistoryStore(path).Save(MiniGame.Flags, history);
 
-        var reloaded = new FileHistoryStore(path).Load(197);
+        var reloaded = new FileHistoryStore(path).Load(MiniGame.Flags, 197);
 
         Assert.Equal(LearningRules.GraduatedBox, reloaded.BoxOf("dk"));
         Assert.Equal(3, reloaded.For("dk").Correct);
@@ -57,9 +57,9 @@ public class HistoryStoreTests : IDisposable
             }
         }
 
-        new FileHistoryStore(path).Save(history);
+        new FileHistoryStore(path).Save(MiniGame.Flags, history);
 
-        Assert.Equal(3, new FileHistoryStore(path).Load(100).MasteryPercent);
+        Assert.Equal(3, new FileHistoryStore(path).Load(MiniGame.Flags, 100).MasteryPercent);
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public class HistoryStoreTests : IDisposable
         Directory.CreateDirectory(_directory);
         File.WriteAllText(path, "not json at all");
 
-        Assert.Empty(new FileHistoryStore(path).Load(197).Flags);
+        Assert.Empty(new FileHistoryStore(path).Load(MiniGame.Flags, 197).Flags);
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class HistoryStoreTests : IDisposable
     {
         var store = new FileHistoryStore(Path.Combine(_directory, "\0invalid", "history.json"));
 
-        Assert.Null(Record.Exception(() => store.Save(new PlayerHistory(poolSize: 197))));
+        Assert.Null(Record.Exception(() => store.Save(MiniGame.Flags, new PlayerHistory(poolSize: 197))));
     }
 
     [Fact]
@@ -89,9 +89,49 @@ public class HistoryStoreTests : IDisposable
         var history = new PlayerHistory(poolSize: 197);
         history.Record("dk", correct: true, fast: true);
 
-        new FileHistoryStore(path).Save(history);
+        new FileHistoryStore(path).Save(MiniGame.Flags, history);
 
         Assert.Contains("\"flags\"", File.ReadAllText(path), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Each_game_keeps_its_own_progress()
+    {
+        // Knowing a country's flag says nothing about recognising its outline.
+        var path = PathFor("games.json");
+        var store = new FileHistoryStore(path);
+
+        var flags = new PlayerHistory(poolSize: 197);
+        flags.Record("dk", correct: true, fast: true);
+
+        var borders = new PlayerHistory(poolSize: 197);
+        borders.Record("se", correct: false, fast: false);
+
+        store.Save(MiniGame.Flags, flags);
+        store.Save(MiniGame.Borders, borders);
+
+        var reloadedFlags = store.Load(MiniGame.Flags, 197);
+        var reloadedBorders = store.Load(MiniGame.Borders, 197);
+
+        Assert.Single(reloadedFlags.Flags);
+        Assert.Single(reloadedBorders.Flags);
+        Assert.Equal(1, reloadedFlags.For("dk").Seen);
+        Assert.Equal(0, reloadedBorders.For("dk").Seen);
+    }
+
+    [Fact]
+    public void Saving_one_game_leaves_the_other_alone()
+    {
+        var path = PathFor("both.json");
+        var store = new FileHistoryStore(path);
+
+        var flags = new PlayerHistory(poolSize: 197);
+        flags.Record("dk", correct: true, fast: true);
+        store.Save(MiniGame.Flags, flags);
+
+        store.Save(MiniGame.Borders, new PlayerHistory(poolSize: 197));
+
+        Assert.Equal(1, store.Load(MiniGame.Flags, 197).For("dk").Seen);
     }
 
     public void Dispose()

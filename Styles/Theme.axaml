@@ -16,7 +16,6 @@
         </LinearGradientBrush>
 
         <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="CardSoftBrush" Color="#F3F9FC" />
         <SolidColorBrush x:Key="TrackBrush" Color="#E3EEF5" />
 
         <!-- The shade every raised white surface is edged in -->
@@ -37,7 +36,6 @@
         <SolidColorBrush x:Key="ScoreEdgeBrush" Color="#E0A422" />
         <SolidColorBrush x:Key="ScoreTextBrush" Color="#E8A317" />
         <SolidColorBrush x:Key="FocusBrush" Color="#3FA9F5" />
-        <SolidColorBrush x:Key="FocusEdgeBrush" Color="#1B6FA8" />
 
         <!-- Swap this for the embedded Fredoka face once the font ships with the app. -->
         <FontFamily x:Key="AppFont">Segoe UI Variable Display, Segoe UI, sans-serif</FontFamily>
@@ -80,10 +78,6 @@
         <Setter Property="Foreground" Value="{StaticResource InkFaintBrush}" />
     </Style>
 
-    <Style Selector="TextBlock.statValue">
-        <Setter Property="FontSize" Value="24" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-    </Style>
 
     <Style Selector="TextBlock.body">
         <Setter Property="FontSize" Value="13" />

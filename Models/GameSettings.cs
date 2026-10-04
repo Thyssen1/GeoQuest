@@ -18,6 +18,11 @@ public sealed record GameSettings
     [JsonConverter(typeof(JsonStringEnumConverter<GameMode>))]
     public GameMode Mode { get; init; } = GameMode.Normal;
 
+    /// <summary>The mini-game of the last run, offered again first for the same reason.</summary>
+    [JsonPropertyName("game")]
+    [JsonConverter(typeof(JsonStringEnumConverter<MiniGame>))]
+    public MiniGame Game { get; init; } = MiniGame.Flags;
+
     public const int DefaultStartingLives = 3;
     public static readonly int[] AllowedLives = [1, 3, 5];
 
@@ -31,11 +36,16 @@ public sealed record GameSettings
             sanitised = sanitised with { StartingLives = DefaultStartingLives };
         }
 
-        // A number outside the enum survives deserialisation; a mode that does not exist
-        // would leave Play with nothing to preselect.
+        // A number outside the enum survives deserialisation; a mode or game that does
+        // not exist would leave Play with nothing to preselect.
         if (!System.Enum.IsDefined(Mode))
         {
             sanitised = sanitised with { Mode = GameMode.Normal };
+        }
+
+        if (!System.Enum.IsDefined(Game))
+        {
+            sanitised = sanitised with { Game = MiniGame.Flags };
         }
 
         return sanitised;

@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using Avalonia.Controls;
-using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -19,21 +18,17 @@ namespace GeoQuest.ViewModels;
 /// </summary>
 public partial class GameViewModel : ViewModelBase, IDisposable
 {
-    /// <summary>How long the correct answer stays on screen before the next round.</summary>
-    private static readonly TimeSpan RevealDelay = TimeSpan.FromMilliseconds(1300);
-
     /// <summary>UI refresh cadence only. The countdown itself is read from <see cref="_clock"/>.</summary>
     private static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(50);
 
     private readonly IQuestionGenerator _generator;
-    private readonly IFlagImageLoader _images;
-    private readonly IScoreStore _scores;
+    private readonly ICountryArtwork _artwork;
+    private readonly FileScoreStore _scores;
     private readonly DifficultyProfile _profile;
     private readonly PlayerHistory _history;
 
-    /// <summary>Resolves a name from the recall list back to the country it belongs to.</summary>
     private readonly Dictionary<string, Country> _byName;
-    private readonly ISoundPlayer? _sounds;
+    private readonly SystemSoundPlayer? _sounds;
     private readonly Random _random;
     private readonly DispatcherTimer _roundTimer;
     private readonly DispatcherTimer _revealTimer;
@@ -65,7 +60,6 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     private int _correctAnswers;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(LivesText))]
     private int _lives;
 
     [ObservableProperty]
@@ -87,12 +81,10 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     [NotifyPropertyChangedFor(nameof(ShowsRecall))]
     private bool _isGameOver;
 
-    /// <summary>True between the player's pick and the start of the next round.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsAnswerName))]
     private bool _isRevealing;
 
-    /// <summary>Set when this run beats the stored best score.</summary>
     [ObservableProperty]
     private bool _isNewBest;
 
@@ -100,56 +92,49 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     [NotifyPropertyChangedFor(nameof(HasResultMessage))]
     private string _resultMessage = string.Empty;
 
-    /// <summary>True for the round in which a life was won, so the scoreboard can say so.</summary>
     [ObservableProperty]
     private bool _hasWonLife;
 
-    /// <summary>Rounds started in this run, including the one on screen.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RoundText))]
     private int _roundsPlayed;
 
-    /// <summary>The flag being asked about, when the player is the one naming it.</summary>
     [ObservableProperty]
-    private Bitmap? _promptFlag;
+    private object? _promptArt;
 
-    /// <summary>Points won by the last answer, shown popping off the score.</summary>
     [ObservableProperty]
     private int _lastAward;
 
     [ObservableProperty]
     private bool _showsAward;
 
-    /// <summary>Frames the shown flag once the round resolves, the way a tile is framed.</summary>
     [ObservableProperty]
     private bool _answeredCorrectly;
 
     [ObservableProperty]
     private bool _answeredWrongly;
 
-    /// <summary>The country name picked from the list, before it is committed as an answer.</summary>
     [ObservableProperty]
     private string? _selectedChoice;
 
-    /// <summary>Raised when the player asks to leave the run and return to the menu.</summary>
     public event EventHandler? MenuRequested;
 
     public GameViewModel(
         IQuestionGenerator generator,
-        IFlagImageLoader images,
-        IScoreStore scores,
+        ICountryArtwork artwork,
+        FileScoreStore scores,
         DifficultyProfile? profile = null,
-        ISoundPlayer? sounds = null,
+        SystemSoundPlayer? sounds = null,
         Random? random = null,
         PlayerHistory? history = null,
         IReadOnlyList<Country>? choices = null)
     {
         ArgumentNullException.ThrowIfNull(generator);
-        ArgumentNullException.ThrowIfNull(images);
+        ArgumentNullException.ThrowIfNull(artwork);
         ArgumentNullException.ThrowIfNull(scores);
 
         _generator = generator;
-        _images = images;
+        _artwork = artwork;
         _scores = scores;
 
         _profile = profile ?? DifficultyProfile.Normal;
@@ -169,23 +154,23 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         _roundTimer = new DispatcherTimer { Interval = TickInterval };
         _roundTimer.Tick += OnRoundTick;
 
-        _revealTimer = new DispatcherTimer { Interval = RevealDelay };
+        _revealTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(_profile.RevealSeconds) };
         _revealTimer.Tick += OnRevealElapsed;
 
-        BestScore = _scores.LoadBestScore(_profile.Mode);
+        BestScore = _scores.LoadBestScore(_profile.Game, _profile.Mode);
 
         StartNewGame();
     }
 
     public ObservableCollection<FlagOptionViewModel> Options { get; } = [];
 
-    /// <summary>Every country name the player can pick, alphabetically. Empty outside Recall.</summary>
     public IReadOnlyList<string> Choices { get; }
 
-    /// <summary>True when the flag is the question and the country is the answer.</summary>
     public bool IsNameInput => _profile.Input == RoundInput.Name;
 
-    public string PromptHeading => IsNameInput ? "Which country is this?" : "Which flag belongs to";
+    public string PromptHeading => IsNameInput
+        ? "Which country is this?"
+        : _profile.Subject == RoundSubject.Outline ? "Which outline belongs to" : "Which flag belongs to";
 
     /// <summary>In Recall the country is the answer, so its name only appears once the round is over.</summary>
     public bool ShowsAnswerName => !IsNameInput || IsRevealing;
@@ -199,10 +184,8 @@ public partial class GameViewModel : ViewModelBase, IDisposable
 
     public string LivesText => string.Concat(Enumerable.Repeat("♥", Math.Max(0, Lives)));
 
-    /// <summary>False in a mode that cannot be lost, where the scoreboard hides lives entirely.</summary>
     public bool HasLives => _profile.HasLives;
 
-    /// <summary>True in a mode that ends after a set number of rounds.</summary>
     public bool IsBounded => _profile.IsBounded;
 
     public string RoundText => $"{Math.Min(RoundsPlayed, _profile.RoundLimit)} / {_profile.RoundLimit}";
@@ -210,8 +193,6 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     /// <summary>A bounded session is finished rather than lost, and should not be told otherwise.</summary>
     public string EndTitle => _profile.IsBounded ? "Session complete" : "Run over";
 
-    /// <summary>False in Hard, whose board is about the run rather than the long game.</summary>
-    /// <summary>Names the keys that actually work: the grid is not always six wide.</summary>
     public string AnswerKeysText => IsNameInput
         ? "Type to search  ·  Enter to answer  ·  Esc for the menu"
         : $"Press 1–{OptionCount} to answer  ·  Esc for the menu";
@@ -221,7 +202,7 @@ public partial class GameViewModel : ViewModelBase, IDisposable
     /// <summary>Share of the pool in the mastered box. Falls as well as rises.</summary>
     public string MasteryText => $"{_history.MasteryPercent}%";
 
-    public string MasteryDetail => $"{_history.Graduated} / {_history.PoolSize} flags mastered";
+    public string MasteryDetail => $"{_history.Graduated} / {_history.PoolSize} countries mastered";
 
     /// <summary>
     /// Column count that keeps the grid balanced at each size: 3 and 6 sit in rows of
@@ -273,7 +254,6 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         BeginReveal();
     }
 
-    /// <summary>Recall entry point: the player has named a country and committed to it.</summary>
     [RelayCommand(CanExecute = nameof(CanSubmit))]
     private void Submit()
     {
@@ -287,11 +267,7 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         BeginReveal();
     }
 
-    /// <summary>
-    /// Everything a round does with an answer, however it was given: the clock is read and
-    /// stopped, the outcome is filed against the flag, and the score, streak and lives move.
-    /// Returns whether the answer was right.
-    /// </summary>
+    /// <summary>What a round does with an answer, however it was given.</summary>
     private bool Commit(Country picked)
     {
         // Read the clock before stopping it so the speed bonus reflects the real answer time.
@@ -393,7 +369,6 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Abandons the run and hands control back to the menu.</summary>
     [RelayCommand]
     private void ReturnToMenu()
     {
@@ -406,22 +381,15 @@ public partial class GameViewModel : ViewModelBase, IDisposable
 
     private bool CanSelect(FlagOptionViewModel? option) => !IsRevealing && !IsGameOver;
 
-    /// <summary>Files the round's outcome against the flag that was the answer.</summary>
     private void Record(bool correct, bool fast)
     {
-        if (_question is null)
-        {
-            return;
-        }
-
-        if (_history.Record(_question.Answer.Code, correct, fast))
+        if (_history.Record(_question!.Answer.Code, correct, fast))
         {
             OnPropertyChanged(nameof(MasteryText));
             OnPropertyChanged(nameof(MasteryDetail));
         }
     }
 
-    /// <summary>Costs a life, in the modes that have them.</summary>
     private void LoseLife()
     {
         if (_profile.HasLives)
@@ -430,7 +398,6 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Plays a sound, unless this is the previewer or the run was given no player.</summary>
     private void Play(GameSound sound)
     {
         if (!_isDesignMode)
@@ -453,7 +420,7 @@ public partial class GameViewModel : ViewModelBase, IDisposable
 
         // Persisted the moment the record is beaten, so closing the app mid-run
         // does not throw the score away.
-        _scores.SaveBestScore(_profile.Mode, BestScore);
+        _scores.SaveBestScore(_profile.Game, _profile.Mode, BestScore);
     }
 
     private void StartRound()
@@ -471,7 +438,7 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         HasWonLife = false;
 
         Options.Clear();
-        PromptFlag = null;
+        PromptArt = null;
         SelectedChoice = null;
         AnsweredCorrectly = false;
         AnsweredWrongly = false;
@@ -480,13 +447,13 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         if (IsNameInput)
         {
             // The flag is the question here, so the generated options go unused.
-            PromptFlag = _images.Load(_question.Answer.Code);
+            PromptArt = _artwork.For(_question.Answer.Code);
         }
         else
         {
             foreach (var country in _question.Options)
             {
-                Options.Add(new FlagOptionViewModel(country, _images.Load(country.Code))
+                Options.Add(new FlagOptionViewModel(country, _artwork.For(country.Code))
                 {
                     Key = (Options.Count + 1).ToString(),
                 });
@@ -551,7 +518,13 @@ public partial class GameViewModel : ViewModelBase, IDisposable
         _revealTimer.Start();
     }
 
-    private void OnRevealElapsed(object? sender, EventArgs e)
+    private void OnRevealElapsed(object? sender, EventArgs e) => CompleteReveal();
+
+    /// <summary>
+    /// Ends the reveal and moves the run on. The timer only schedules this; keeping the
+    /// decision separate is what lets a test step through a run without racing a clock.
+    /// </summary>
+    internal void CompleteReveal()
     {
         _revealTimer.Stop();
 

@@ -2,18 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using GeoQuest.Models;
 
 namespace GeoQuest.Services;
 
 /// <summary>
-/// Stores learning history as JSON under the user's application data directory, in its own
-/// file for the same reason settings are: a corrupt one must never cost the player
-/// something else. Entries are nested under a game key because knowing a country's flag is
-/// not knowing its outline, and later mini-games will need their own progress.
+/// Stores learning progress as JSON under the user's application data directory, in its
+/// own file for the same reason settings are: a corrupt one must never cost the player
+/// something else. Each mini-game has its own section, because knowing a country's flag
+/// says nothing about whether you would recognise its outline.
 /// </summary>
-public sealed class FileHistoryStore : IHistoryStore
+public sealed class FileHistoryStore
 {
     private const string FolderName = "GeoQuest";
     private const string FileName = "history.json";
@@ -28,33 +27,27 @@ public sealed class FileHistoryStore : IHistoryStore
             FileName);
     }
 
-    public PlayerHistory Load(int poolSize)
+    private static string Section(MiniGame game) => game.ToString().ToLowerInvariant();
+
+    public PlayerHistory Load(MiniGame game, int poolSize)
     {
-        try
-        {
-            if (!File.Exists(_path))
-            {
-                return new PlayerHistory(poolSize: poolSize);
-            }
+        var sections = Read();
 
-            var record = JsonSerializer.Deserialize<HistoryRecord>(File.ReadAllText(_path));
-
-            return new PlayerHistory(record?.Flags, poolSize);
-        }
-        catch (Exception)
-        {
-            // Corrupt or unreadable: start over rather than crash. Losing progress is bad,
-            // but refusing to launch is worse, and the file is rewritten on the next run.
-            return new PlayerHistory(poolSize: poolSize);
-        }
+        return sections.TryGetValue(Section(game), out var flags)
+            ? new PlayerHistory(flags, poolSize)
+            : new PlayerHistory(poolSize: poolSize);
     }
 
-    public void Save(PlayerHistory history)
+    public void Save(MiniGame game, PlayerHistory history)
     {
         ArgumentNullException.ThrowIfNull(history);
 
         try
         {
+            // Read first: the other games' progress lives in the same file and must survive.
+            var sections = Read();
+            sections[Section(game)] = new Dictionary<string, FlagHistory>(history.Flags, StringComparer.OrdinalIgnoreCase);
+
             var directory = Path.GetDirectoryName(_path);
 
             if (!string.IsNullOrEmpty(directory))
@@ -62,12 +55,7 @@ public sealed class FileHistoryStore : IHistoryStore
                 Directory.CreateDirectory(directory);
             }
 
-            var record = new HistoryRecord
-            {
-                Flags = new Dictionary<string, FlagHistory>(history.Flags, StringComparer.OrdinalIgnoreCase),
-            };
-
-            File.WriteAllText(_path, JsonSerializer.Serialize(record));
+            File.WriteAllText(_path, JsonSerializer.Serialize(sections));
         }
         catch (Exception)
         {
@@ -75,9 +63,27 @@ public sealed class FileHistoryStore : IHistoryStore
         }
     }
 
-    private sealed record HistoryRecord
+    private Dictionary<string, Dictionary<string, FlagHistory>> Read()
     {
-        [JsonPropertyName("flags")]
-        public Dictionary<string, FlagHistory>? Flags { get; init; }
+        try
+        {
+            if (!File.Exists(_path))
+            {
+                return new Dictionary<string, Dictionary<string, FlagHistory>>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            var sections = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, FlagHistory>>>(
+                File.ReadAllText(_path));
+
+            return sections is null
+                ? new Dictionary<string, Dictionary<string, FlagHistory>>(StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, Dictionary<string, FlagHistory>>(sections, StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception)
+        {
+            // Corrupt or unreadable: start over rather than crash. Losing progress is bad,
+            // but refusing to launch is worse, and the file is rewritten on the next run.
+            return new Dictionary<string, Dictionary<string, FlagHistory>>(StringComparer.OrdinalIgnoreCase);
+        }
     }
 }

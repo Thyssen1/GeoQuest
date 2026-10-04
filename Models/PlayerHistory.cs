@@ -28,13 +28,11 @@ public sealed class PlayerHistory
     /// <summary>Only flags that have been asked appear here; the rest are in the pool by absence.</summary>
     public IReadOnlyDictionary<string, FlagHistory> Flags => _flags;
 
-    /// <summary>Flags in the mastered box.</summary>
     public int Graduated => _flags.Values.Count(flag => flag.Box >= LearningRules.GraduatedBox);
 
     /// <summary>Mastered flags as a percentage of the pool. Falls as well as rises.</summary>
     public int MasteryPercent => LearningRules.MasteryPercent(Graduated, PoolSize);
 
-    /// <summary>The history for one flag, or a blank one for a flag never asked.</summary>
     public FlagHistory For(string code) =>
         _flags.TryGetValue(code, out var flag) ? flag : new FlagHistory();
 

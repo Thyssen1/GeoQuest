@@ -5,7 +5,7 @@ namespace GeoQuest.Tests;
 
 public class LearningQuestionGeneratorTests
 {
-    private static ICountryRepository LoadRepository()
+    private static JsonCountryRepository LoadRepository()
     {
         using var stream = File.OpenRead(TestPaths.CountriesJson);
         return JsonCountryRepository.Load(stream);

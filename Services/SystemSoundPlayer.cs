@@ -8,6 +8,14 @@ using Avalonia.Platform;
 
 namespace GeoQuest.Services;
 
+/// <summary>The short effects a round can trigger.</summary>
+public enum GameSound
+{
+    Correct,
+    BonusLife,
+    Wrong,
+}
+
 /// <summary>
 /// Plays the bundled WAVs through whatever the host platform already provides: winmm on
 /// Windows, <c>afplay</c> on macOS, PulseAudio or ALSA on Linux. That keeps the app free
@@ -17,7 +25,7 @@ namespace GeoQuest.Services;
 /// The sounds ship as Avalonia resources, which the platform players cannot read, so each
 /// one is unpacked to a file the first time it is asked for and reused after that.
 /// </summary>
-public sealed class SystemSoundPlayer : ISoundPlayer
+public sealed class SystemSoundPlayer
 {
     private const string ResourceRoot = "avares://GeoQuest/Assets/Sounds/";
 

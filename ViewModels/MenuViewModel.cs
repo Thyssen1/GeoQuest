@@ -13,9 +13,9 @@ namespace GeoQuest.ViewModels;
 /// </summary>
 public partial class MenuViewModel : ViewModelBase
 {
-    private readonly IScoreStore _scores;
-    private readonly ISettingsStore _settings;
-    private readonly PlayerHistory _history;
+    private readonly FileScoreStore _scores;
+    private readonly FileSettingsStore _settings;
+    private PlayerHistory _history;
 
     [ObservableProperty]
     private int _bestScore;
@@ -34,7 +34,7 @@ public partial class MenuViewModel : ViewModelBase
     [ObservableProperty]
     private int _masteryPercent;
 
-    public MenuViewModel(IScoreStore scores, ISettingsStore settings, PlayerHistory? history = null)
+    public MenuViewModel(FileScoreStore scores, FileSettingsStore settings, PlayerHistory? history = null)
     {
         ArgumentNullException.ThrowIfNull(scores);
         ArgumentNullException.ThrowIfNull(settings);
@@ -61,12 +61,17 @@ public partial class MenuViewModel : ViewModelBase
     /// Re-reads the score, so returning from a run or from Options shows the current value.
     /// The mode shown is the one last played, which is the score the player is chasing.
     /// </summary>
-    public void Refresh()
+    public void Refresh(PlayerHistory? history = null)
     {
+        if (history is not null)
+        {
+            _history = history;
+        }
+
         var settings = _settings.Load().Sanitised();
 
-        BestScore = _scores.LoadBestScore(settings.Mode);
-        BestScoreLabel = settings.Mode.ToString().ToUpperInvariant();
+        BestScore = _scores.LoadBestScore(settings.Game, settings.Mode);
+        BestScoreLabel = $"{settings.Game.ToString().ToUpperInvariant()} · {settings.Mode.ToString().ToUpperInvariant()}";
         StartingLivesText = settings.StartingLives.ToString();
 
         MasteryDetail = $"{_history.Graduated} / {_history.PoolSize}";

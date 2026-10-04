@@ -44,8 +44,8 @@
 
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
             <StackPanel Grid.Column="0">
-                <TextBlock Classes="onSky" Text="Choose a mode" FontSize="38" FontWeight="Bold" />
-                <TextBlock Classes="onSky" Text="Press 1–4, or Enter for the one you played last"
+                <TextBlock Classes="onSky" Text="{Binding Title}" FontSize="38" FontWeight="Bold" />
+                <TextBlock Classes="onSky" Text="Choose a mode — press 1–4, or Enter for the one you played last"
                            FontSize="14" Opacity="0.9" Margin="0,4,0,0" />
             </StackPanel>
 

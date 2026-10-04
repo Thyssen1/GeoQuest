@@ -1,3 +1,4 @@
+using System.Text;
 using GeoQuest.Models;
 using GeoQuest.Services;
 
@@ -5,7 +6,7 @@ namespace GeoQuest.Tests;
 
 public class QuestionGeneratorTests
 {
-    private static ICountryRepository LoadRepository()
+    private static JsonCountryRepository LoadRepository()
     {
         using var stream = File.OpenRead(TestPaths.CountriesJson);
         return JsonCountryRepository.Load(stream);
@@ -129,18 +130,17 @@ public class QuestionGeneratorTests
     [Fact]
     public void Rejects_a_pool_too_small_to_fill_a_round()
     {
-        var tiny = new StubRepository([
-            new Country { Code = "dk", Name = "Denmark", Region = "Europe", Kind = CountryKind.Sovereign },
-            new Country { Code = "se", Name = "Sweden", Region = "Europe", Kind = CountryKind.Sovereign },
-        ]);
+        var tiny = LoadFrom("""
+            [{"code":"dk","name":"Denmark","region":"Europe","kind":"sovereign"},
+             {"code":"se","name":"Sweden","region":"Europe","kind":"sovereign"}]
+            """);
 
         Assert.Throws<ArgumentException>(() => new RandomQuestionGenerator(tiny));
     }
 
-    private sealed class StubRepository(IReadOnlyList<Country> countries) : ICountryRepository
+    private static JsonCountryRepository LoadFrom(string json)
     {
-        public IReadOnlyList<Country> All { get; } = countries;
-
-        public IReadOnlyList<Country> QuestionPool { get; } = countries;
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        return JsonCountryRepository.Load(stream);
     }
 }

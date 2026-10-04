@@ -11,11 +11,11 @@ public static class AssetCountryData
 {
     private const string CountriesUri = "avares://GeoQuest/Assets/countries.json";
 
-    private static ICountryRepository? _instance;
+    private static JsonCountryRepository? _instance;
 
-    public static ICountryRepository Instance => _instance ??= Load();
+    public static JsonCountryRepository Instance => _instance ??= Load();
 
-    private static ICountryRepository Load()
+    private static JsonCountryRepository Load()
     {
         using var stream = AssetLoader.Open(new Uri(CountriesUri));
         return JsonCountryRepository.Load(stream);

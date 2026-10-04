@@ -21,7 +21,7 @@ public sealed class RandomQuestionGenerator : IQuestionGenerator
     private readonly HashSet<string> _recentAnswerCodes = new(StringComparer.Ordinal);
     private readonly int _recentWindow;
 
-    public RandomQuestionGenerator(ICountryRepository repository, Random? random = null)
+    public RandomQuestionGenerator(JsonCountryRepository repository, Random? random = null)
     {
         ArgumentNullException.ThrowIfNull(repository);
 

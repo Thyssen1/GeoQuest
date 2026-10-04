@@ -12,7 +12,7 @@ namespace GeoQuest.Services;
 /// rather than reaching for Avalonia's asset loader, so the data layer carries no UI
 /// dependency and can be exercised from a plain unit test.
 /// </summary>
-public sealed class JsonCountryRepository : ICountryRepository
+public sealed class JsonCountryRepository
 {
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {

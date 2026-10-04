@@ -1,11 +1,27 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GeoQuest.ViewModels"
+             xmlns:media="using:Avalonia.Media"
+             xmlns:imaging="using:Avalonia.Media.Imaging"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="720"
              x:Class="GeoQuest.Views.GameView"
              x:DataType="vm:GameViewModel">
+
+    <!-- A round draws either a flag or a country outline, and neither the game nor the
+         tile needs to know which: the artwork arrives as content and finds its template. -->
+    <UserControl.DataTemplates>
+        <DataTemplate DataType="imaging:Bitmap">
+            <Image Source="{Binding}" Stretch="Fill" />
+        </DataTemplate>
+        <DataTemplate DataType="media:Geometry">
+            <Path Data="{Binding}"
+                  Fill="{StaticResource InkBrush}"
+                  Stretch="Uniform"
+                  Margin="16" />
+        </DataTemplate>
+    </UserControl.DataTemplates>
 
     <UserControl.Styles>
         <!-- A tile is a white card holding a flag. The flag PNGs are already rendered on
@@ -42,6 +58,11 @@
         <Style Selector="Button.tile">
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="10" />
+
+            <!-- Fill the cell: left to size itself to the tile, the button hugs the left
+                 edge and the whole grid drifts off centre. -->
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -228,7 +249,11 @@
                             Command="{Binding $parent[ItemsControl].((vm:GameViewModel)DataContext).SelectCommand}"
                             CommandParameter="{Binding}">
 
-                        <Viewbox Stretch="Uniform" MaxWidth="360">
+                        <!-- Centred in its cell: a capped width left to stretch anchors to the
+                             left edge, which drifts the whole grid off centre. -->
+                        <Viewbox Stretch="Uniform" MaxWidth="360"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center">
                             <Border Classes="tile"
                                     Width="320" Height="222"
                                     Classes.correct="{Binding IsCorrect}"
@@ -239,12 +264,14 @@
                                     <Border CornerRadius="11" ClipToBounds="True">
                                         <Panel>
                                             <TextBlock Text="{Binding Code}"
-                                                       IsVisible="{Binding !HasImage}"
+                                                       IsVisible="{Binding !HasArt}"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center"
                                                        FontSize="28"
                                                        Foreground="{StaticResource InkFaintBrush}" />
-                                            <Image Source="{Binding Image}" Stretch="Fill" />
+                                            <ContentControl Content="{Binding Art}"
+                                                            HorizontalContentAlignment="Stretch"
+                                                            VerticalContentAlignment="Stretch" />
                                         </Panel>
                                     </Border>
 
@@ -285,7 +312,9 @@
                     Classes.correct="{Binding AnsweredCorrectly}"
                     Classes.wrong="{Binding AnsweredWrongly}">
                 <Border CornerRadius="13" ClipToBounds="True">
-                    <Image Source="{Binding PromptFlag}" Stretch="Fill" />
+                    <ContentControl Content="{Binding PromptArt}"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch" />
                 </Border>
             </Border>
 
@@ -297,7 +326,7 @@
                                      FilterMode="Contains"
                                      MinimumPrefixLength="1"
                                      IsTextCompletionEnabled="False"
-                                     Watermark="Type a country…"
+                                     PlaceholderText="Type a country…"
                                      FontSize="19"
                                      BorderThickness="0"
                                      Background="Transparent" />

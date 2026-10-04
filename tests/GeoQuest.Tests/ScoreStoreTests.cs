@@ -15,7 +15,7 @@ public class ScoreStoreTests : IDisposable
     {
         var store = new FileScoreStore(PathFor("absent.json"));
 
-        Assert.Equal(0, store.LoadBestScore(GameMode.Normal));
+        Assert.Equal(0, store.LoadBestScore(MiniGame.Flags, GameMode.Normal));
     }
 
     [Fact]
@@ -23,9 +23,9 @@ public class ScoreStoreTests : IDisposable
     {
         var path = PathFor("scores.json");
 
-        new FileScoreStore(path).SaveBestScore(GameMode.Normal, 1234);
+        new FileScoreStore(path).SaveBestScore(MiniGame.Flags, GameMode.Normal, 1234);
 
-        Assert.Equal(1234, new FileScoreStore(path).LoadBestScore(GameMode.Normal));
+        Assert.Equal(1234, new FileScoreStore(path).LoadBestScore(MiniGame.Flags, GameMode.Normal));
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class ScoreStoreTests : IDisposable
     {
         var path = Path.Combine(_directory, "nested", "deeper", "scores.json");
 
-        new FileScoreStore(path).SaveBestScore(GameMode.Normal, 7);
+        new FileScoreStore(path).SaveBestScore(MiniGame.Flags, GameMode.Normal, 7);
 
         Assert.True(File.Exists(path));
     }
@@ -45,7 +45,7 @@ public class ScoreStoreTests : IDisposable
         Directory.CreateDirectory(_directory);
         File.WriteAllText(path, "this is not json");
 
-        Assert.Equal(0, new FileScoreStore(path).LoadBestScore(GameMode.Normal));
+        Assert.Equal(0, new FileScoreStore(path).LoadBestScore(MiniGame.Flags, GameMode.Normal));
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class ScoreStoreTests : IDisposable
         Directory.CreateDirectory(_directory);
         File.WriteAllText(path, """{"BestScore":-500}""");
 
-        Assert.Equal(0, new FileScoreStore(path).LoadBestScore(GameMode.Normal));
+        Assert.Equal(0, new FileScoreStore(path).LoadBestScore(MiniGame.Flags, GameMode.Normal));
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public class ScoreStoreTests : IDisposable
         // Losing a high score must never interrupt a run in progress.
         var store = new FileScoreStore(Path.Combine(_directory, "\0invalid", "scores.json"));
 
-        var exception = Record.Exception(() => store.SaveBestScore(GameMode.Normal, 42));
+        var exception = Record.Exception(() => store.SaveBestScore(MiniGame.Flags, GameMode.Normal, 42));
 
         Assert.Null(exception);
     }
@@ -75,12 +75,12 @@ public class ScoreStoreTests : IDisposable
         var path = PathFor("modes.json");
         var store = new FileScoreStore(path);
 
-        store.SaveBestScore(GameMode.Normal, 2400);
-        store.SaveBestScore(GameMode.Hard, 900);
+        store.SaveBestScore(MiniGame.Flags, GameMode.Normal, 2400);
+        store.SaveBestScore(MiniGame.Flags, GameMode.Hard, 900);
 
-        Assert.Equal(2400, store.LoadBestScore(GameMode.Normal));
-        Assert.Equal(900, store.LoadBestScore(GameMode.Hard));
-        Assert.Equal(0, store.LoadBestScore(GameMode.Learning));
+        Assert.Equal(2400, store.LoadBestScore(MiniGame.Flags, GameMode.Normal));
+        Assert.Equal(900, store.LoadBestScore(MiniGame.Flags, GameMode.Hard));
+        Assert.Equal(0, store.LoadBestScore(MiniGame.Flags, GameMode.Learning));
     }
 
     [Fact]
@@ -92,8 +92,8 @@ public class ScoreStoreTests : IDisposable
 
         var store = new FileScoreStore(path);
 
-        Assert.Equal(2376, store.LoadBestScore(GameMode.Normal));
-        Assert.Equal(0, store.LoadBestScore(GameMode.Hard));
+        Assert.Equal(2376, store.LoadBestScore(MiniGame.Flags, GameMode.Normal));
+        Assert.Equal(0, store.LoadBestScore(MiniGame.Flags, GameMode.Hard));
     }
 
     [Fact]
@@ -105,12 +105,12 @@ public class ScoreStoreTests : IDisposable
         Directory.CreateDirectory(_directory);
         File.WriteAllText(path, """{"BestScore":2376}""");
 
-        new FileScoreStore(path).SaveBestScore(GameMode.Hard, 40);
+        new FileScoreStore(path).SaveBestScore(MiniGame.Flags, GameMode.Hard, 40);
 
         var reloaded = new FileScoreStore(path);
 
-        Assert.Equal(2376, reloaded.LoadBestScore(GameMode.Normal));
-        Assert.Equal(40, reloaded.LoadBestScore(GameMode.Hard));
+        Assert.Equal(2376, reloaded.LoadBestScore(MiniGame.Flags, GameMode.Normal));
+        Assert.Equal(40, reloaded.LoadBestScore(MiniGame.Flags, GameMode.Hard));
     }
 
     [Fact]
@@ -119,13 +119,57 @@ public class ScoreStoreTests : IDisposable
         var path = PathFor("reset.json");
         var store = new FileScoreStore(path);
 
-        store.SaveBestScore(GameMode.Normal, 100);
-        store.SaveBestScore(GameMode.Learning, 200);
-        store.SaveBestScore(GameMode.Hard, 300);
+        store.SaveBestScore(MiniGame.Flags, GameMode.Normal, 100);
+        store.SaveBestScore(MiniGame.Flags, GameMode.Learning, 200);
+        store.SaveBestScore(MiniGame.Flags, GameMode.Hard, 300);
 
         store.ClearBestScores();
 
-        Assert.All(Enum.GetValues<GameMode>(), mode => Assert.Equal(0, store.LoadBestScore(mode)));
+        Assert.All(Enum.GetValues<GameMode>(), mode => Assert.Equal(0, store.LoadBestScore(MiniGame.Flags, mode)));
+    }
+
+    [Fact]
+    public void Each_game_keeps_its_own_best_in_each_mode()
+    {
+        var path = PathFor("games.json");
+        var store = new FileScoreStore(path);
+
+        store.SaveBestScore(MiniGame.Flags, GameMode.Normal, 2400);
+        store.SaveBestScore(MiniGame.Borders, GameMode.Normal, 150);
+
+        Assert.Equal(2400, store.LoadBestScore(MiniGame.Flags, GameMode.Normal));
+        Assert.Equal(150, store.LoadBestScore(MiniGame.Borders, GameMode.Normal));
+        Assert.Equal(0, store.LoadBestScore(MiniGame.Borders, GameMode.Hard));
+    }
+
+    [Fact]
+    public void A_file_from_before_mini_games_reads_as_the_flag_scores()
+    {
+        // Every score recorded before Guess the Border existed was earned on the flags.
+        var path = PathFor("premini.json");
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(path, """{"bestScores":{"Normal":7361,"Hard":2104}}""");
+
+        var store = new FileScoreStore(path);
+
+        Assert.Equal(7361, store.LoadBestScore(MiniGame.Flags, GameMode.Normal));
+        Assert.Equal(2104, store.LoadBestScore(MiniGame.Flags, GameMode.Hard));
+        Assert.Equal(0, store.LoadBestScore(MiniGame.Borders, GameMode.Normal));
+    }
+
+    [Fact]
+    public void Recording_a_border_score_does_not_discard_the_flag_scores()
+    {
+        var path = PathFor("upgrade2.json");
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(path, """{"bestScores":{"Normal":7361}}""");
+
+        new FileScoreStore(path).SaveBestScore(MiniGame.Borders, GameMode.Normal, 40);
+
+        var reloaded = new FileScoreStore(path);
+
+        Assert.Equal(7361, reloaded.LoadBestScore(MiniGame.Flags, GameMode.Normal));
+        Assert.Equal(40, reloaded.LoadBestScore(MiniGame.Borders, GameMode.Normal));
     }
 
     public void Dispose()

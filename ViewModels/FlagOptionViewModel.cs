@@ -1,4 +1,3 @@
-using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GeoQuest.Models;
 
@@ -31,19 +30,20 @@ public partial class FlagOptionViewModel : ViewModelBase
     [ObservableProperty]
     private string _key = string.Empty;
 
-    public FlagOptionViewModel(Country country, Bitmap? image)
+    public FlagOptionViewModel(Country country, object? art)
     {
         Country = country;
-        Image = image;
+        Art = art;
     }
 
     public Country Country { get; }
 
-    public Bitmap? Image { get; }
+    /// <summary>A flag bitmap or a country outline, whichever the mode draws.</summary>
+    public object? Art { get; }
     
     public string Code => Country.Code.ToUpperInvariant();
     
-    public bool HasImage => Image is not null;
+    public bool HasArt => Art is not null;
     public bool IsCorrect => State == OptionState.Correct;
     public bool IsWrong => State == OptionState.Wrong;
     public bool IsRevealed => State == OptionState.Revealed;

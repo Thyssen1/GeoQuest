@@ -8,7 +8,6 @@ namespace GeoQuest.Services;
 /// <summary>Resolves a country code to its flag bitmap.</summary>
 public interface IFlagImageLoader
 {
-    /// <summary>Returns the flag for <paramref name="code"/>, or null if no asset exists.</summary>
     Bitmap? Load(string code);
 }
 
@@ -20,11 +19,13 @@ public interface IFlagImageLoader
 /// This is the asset adapter: it is the one place that knows the resource layout, which
 /// is what keeps <see cref="JsonCountryRepository"/> and the game logic free of Avalonia.
 /// </summary>
-public sealed class FlagImageLoader : IFlagImageLoader
+public sealed class FlagImageLoader : IFlagImageLoader, ICountryArtwork
 {
     private const string FlagUriFormat = "avares://GeoQuest/Assets/Flags/{0}.png";
 
     private readonly Dictionary<string, Bitmap?> _cache = new(StringComparer.OrdinalIgnoreCase);
+
+    public object? For(string code) => Load(code);
 
     public Bitmap? Load(string code)
     {

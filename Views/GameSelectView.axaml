@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GeoQuest.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="720"
+             x:Class="GeoQuest.Views.GameSelectView"
+             x:DataType="vm:GameSelectViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Button.game">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,0,16" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+
+        <Style Selector="Button.game /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <Style Selector="Button.game:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <Style Selector="Button.game:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <Style Selector="Button.game:pointerover Border.card">
+            <Setter Property="BorderBrush" Value="{StaticResource FocusBrush}" />
+        </Style>
+
+        <Style Selector="Button.game:pressed Border.card">
+            <Setter Property="Margin" Value="0,3,0,-3" />
+            <Setter Property="BorderThickness" Value="0,0,0,2" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*" Margin="30,26">
+
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0">
+                <TextBlock Classes="onSky" Text="Choose a game" FontSize="38" FontWeight="Bold" />
+                <TextBlock Classes="onSky" Text="Press 1 or 2, or Enter for the one you played last"
+                           FontSize="14" Opacity="0.9" Margin="0,4,0,0" />
+            </StackPanel>
+
+            <Button Grid.Column="1" Classes="raised" Content="Back" FontSize="15"
+                    VerticalAlignment="Bottom" Command="{Binding BackCommand}" />
+        </Grid>
+
+        <ItemsControl Grid.Row="1" ItemsSource="{Binding Games}" VerticalAlignment="Center" Margin="0,0,0,40">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:GameCard">
+                    <Button Classes="game"
+                            IsDefault="{Binding IsLastPlayed}"
+                            Command="{Binding $parent[ItemsControl].((vm:GameSelectViewModel)DataContext).ChooseCommand}"
+                            CommandParameter="{Binding}">
+
+                        <Border Classes="card" Padding="24,22">
+                            <Grid ColumnDefinitions="Auto,18,*">
+
+                                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18"
+                                        Background="{Binding KeyBackground}" VerticalAlignment="Top">
+                                    <TextBlock Text="{Binding Key}" FontSize="24" FontWeight="SemiBold"
+                                               Foreground="{Binding KeyForeground}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="2" Spacing="5">
+                                    <StackPanel Orientation="Horizontal" Spacing="9">
+                                        <TextBlock Text="{Binding Name}" FontSize="26" FontWeight="SemiBold" />
+                                        <Border Background="#FFE9B0" CornerRadius="999" Padding="10,3"
+                                                VerticalAlignment="Center" IsVisible="{Binding IsLastPlayed}">
+                                            <TextBlock Text="LAST PLAYED" FontSize="11" FontWeight="SemiBold"
+                                                       Foreground="#8A5A11" />
+                                        </Border>
+                                    </StackPanel>
+
+                                    <TextBlock Classes="body" Text="{Binding Summary}" TextWrapping="Wrap" />
+
+                                    <Grid ColumnDefinitions="*,12,Auto" Margin="0,10,0,0">
+                                        <ProgressBar Grid.Column="0" Classes="meter" Height="10"
+                                                     Minimum="0" Maximum="100" Value="{Binding MasteryPercent}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding MasteryPercent, StringFormat='{}{0}% mastered'}"
+                                                   FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource CorrectEdgeBrush}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Grid>
+</UserControl>

@@ -15,8 +15,8 @@ namespace GeoQuest.ViewModels;
 /// </summary>
 public partial class OptionsViewModel : ViewModelBase
 {
-    private readonly ISettingsStore _settings;
-    private readonly IScoreStore _scores;
+    private readonly FileSettingsStore _settings;
+    private readonly FileScoreStore _scores;
 
     /// <summary>The stored settings as they currently stand, so saving one setting never
     /// writes over another that this screen happens not to show.</summary>
@@ -39,7 +39,7 @@ public partial class OptionsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isConfirmingReset;
 
-    public OptionsViewModel(ISettingsStore settings, IScoreStore scores)
+    public OptionsViewModel(FileSettingsStore settings, FileScoreStore scores)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(scores);
@@ -114,8 +114,9 @@ public partial class OptionsViewModel : ViewModelBase
         _settings.Save(settings);
     }
 
-    private static bool AnyScoreRecorded(IScoreStore scores) =>
-        Enum.GetValues<GameMode>().Any(mode => scores.LoadBestScore(mode) > 0);
+    private static bool AnyScoreRecorded(FileScoreStore scores) =>
+        Enum.GetValues<MiniGame>().Any(game =>
+            Enum.GetValues<GameMode>().Any(mode => scores.LoadBestScore(game, mode) > 0));
 
     [RelayCommand]
     private void BeginResetScore() => IsConfirmingReset = true;
