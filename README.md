@@ -2,20 +2,21 @@
 
 **A fast-paced geography trivia game for desktop, built with C# and Avalonia UI.**
 
-Inspired by the classic *Geo Challenge*, GeoQuest is a set of timed mini-games that ask you to identify places from flags, outlines, cities and landmarks. Answer correctly and it gets harder — more options to choose from, less time to choose.
+Inspired by the classic *Geo Challenge*, GeoQuest is a set of timed mini-games that ask you to identify countries — from their flags, their outlines, and later their cities and landmarks. Answer correctly and it gets harder: more options to choose from, less time to choose.
 
 | | |
 | --- | --- |
-| ![The GeoQuest menu](docs/menu.png) | ![The Guess the Flag mini-game](docs/screenshot.png) |
+| ![The GeoQuest menu](docs/menu.png) | ![Choosing a mini-game](docs/games.png) |
+| ![Guess the Flag](docs/flags.png) | ![Guess the Border](docs/borders.png) |
 
 [![.NET](https://img.shields.io/badge/.NET-10-512BD4)](https://dotnet.microsoft.com/download)
 [![Avalonia](https://img.shields.io/badge/Avalonia-12-8B44AC)](https://avaloniaui.net/)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
-![Status](https://img.shields.io/badge/milestone%201-playable-2ECC71)
+![Status](https://img.shields.io/badge/milestone%202-playable-2ECC71)
 
 ## Download
 
-Grab the latest **[release](https://github.com/Thyssen1/GeoQuest/releases/latest)**. Every build is self-contained — the .NET runtime, Avalonia and all 255 flag images are bundled, so nothing needs installing.
+Grab the latest **[release](https://github.com/Thyssen1/GeoQuest/releases/latest)**. Every build is self-contained — the .NET runtime, Avalonia and all the artwork are bundled, so nothing needs installing. Checksums are published as `SHA256SUMS.txt` alongside each release.
 
 | Platform | File | Size |
 | --- | --- | --- |
@@ -23,367 +24,149 @@ Grab the latest **[release](https://github.com/Thyssen1/GeoQuest/releases/latest
 | macOS (Apple Silicon) | `GeoQuest-<version>-macos-arm64.tar.gz` | ~46 MB |
 | macOS (Intel) | `GeoQuest-<version>-macos-x64.tar.gz` | ~46 MB |
 
-**Windows:** download and run. The executable is unsigned, so SmartScreen warns on first launch — choose **More info → Run anyway**.
+Neither build is signed by a paid developer account, so the OS objects on first launch. Neither needs the Terminal.
 
-**macOS:** extract and drag `GeoQuest.app` to Applications. Apple Silicon Macs (M1–M4) want `arm64`; Intel Macs want `x64`. The app is unsigned and un-notarised, so Gatekeeper refuses it on first launch — right-click the app and choose **Open**, or clear the quarantine flag:
+On **Windows**, choose **More info → Run anyway**.
 
-```bash
-xattr -dr com.apple.quarantine /Applications/GeoQuest.app
-```
+On **macOS**, extract the tarball and drag **GeoQuest.app** to Applications. Double-click it; macOS says it cannot check the app for malicious software, so click **Done**, then open **System Settings → Privacy & Security** and click **Open Anyway** next to GeoQuest. That is a one-time step — macOS remembers the app afterwards. On macOS 14 and earlier, right-clicking the app and choosing **Open** does the same thing in one step.
 
-Checksums for every artifact are published as `SHA256SUMS.txt` alongside the release.
+The bundle is [ad-hoc signed](.github/workflows/release.yml) during the build, which is what makes that dialog an *unverified developer* prompt with a way past rather than the dead-end **"damaged — move to Trash"** that an unsigned bundle produces. Getting rid of the prompt entirely would mean notarising the app, which requires a paid Apple Developer account.
 
-Your scores, settings and learning progress are stored per-user, outside the application, so they survive upgrades:
-
-| Platform | Location |
-| --- | --- |
-| Windows | `%APPDATA%GeoQuest` |
-| macOS | `~/.config/GeoQuest/` |
-| Linux | `~/.config/GeoQuest/` |
-
-That folder holds `player.json` (best score per mode), `settings.json` and `history.json` (which flags you have learned). They are separate files so a corrupt one can never cost you the others. Delete one to reset just that part.
+Your scores, settings and progress live outside the application so they survive upgrades — in `%APPDATA%\GeoQuest\` on Windows, `~/.config/GeoQuest/` elsewhere. That folder holds `player.json`, `settings.json` and `history.json`, kept separate so a corrupt one can never cost you the others. Delete one to reset just that part.
 
 ## How it plays
 
-You are shown a country name and a grid of flags, and you pick the right one before the clock runs out.
+**Play** asks two questions in turn: which game, then which mode. They are independent, so every mode exists for every game.
 
-- **The grid grows as you improve.** It opens at 3 flags and expands to 4, 5 and 6 at 3, 7 and 12 correct answers.
-- **The clock tightens too.** Rounds start at 12 seconds and lose a second per grid size, down to a 7-second floor — so later rounds squeeze on both axes at once.
-- **Speed and streaks pay.** A correct answer is worth 100 points, up to 50% more for answering fast, multiplied by a streak bonus that caps at 2×.
-- **Three misses ends the run.** A wrong pick or a timeout costs a life and resets your streak.
-- **Lucky rounds give one back.** A correct answer carries a small chance — around one in eight — of winning a life, up to a ceiling of five. A long run stays survivable without ever being safe.
-- **It says so out loud.** A chime for a right answer, a low tone for a wrong one, and a flourish when a round hands a life back.
-- **Your best score persists** between sessions, stored under your user application data directory.
-
-Answer with the mouse, or press **1–6** on the number row or numpad. **Esc** abandons a run and returns to the menu.
-
-**Options** lets you set starting lives for Normal runs (1, 3 or 5), turn sound on or off, reset every best score, and see where your saved data lives.
-
-### Modes
-
-**Play** asks two questions in turn: which game, then which mode. They are independent — every mode exists for every game — so they are chosen one after the other rather than multiplied into one long list.
-
-| Game | What a round draws |
+| Game | A round draws |
 | --- | --- |
 | **Guess the Flag** | The country's flag |
 | **Guess the Border** | The country's outline, with nothing but the shape to go on |
 
-Each game keeps its own best scores and its own learning progress, because knowing a country's flag says nothing about whether you would recognise its outline.
-
-Four modes, for either game, each keeping its own best score — they do not play by the same terms, so one number across all of them would mean nothing.
-
 | Mode | Terms |
 | --- | --- |
-| **Normal** | The classic run. Three flags growing to six, lives from Options, extra lives possible. |
-| **Learning** | Twenty rounds at a steady four flags on a clock that never tightens, drawn from the flags you are actually learning. Nothing to lose. |
-| **Hard** | Opens at four flags and climbs to six. Three lives, and no way to earn any back. |
-| **Recall** | The question the other way round: one flag or outline is shown and you name the country, from all 197. Eighteen seconds a round, three lives. |
+| **Normal** | The classic run. Three options growing to six, lives from Options, extra lives possible. |
+| **Learning** | Twenty rounds at a steady four options on a clock that never tightens, drawn from what you are actually learning. Nothing to lose. |
+| **Hard** | Opens at four and climbs to six. Three lives, and no way to earn any back. |
+| **Recall** | The question reversed: one picture is shown and you name the country, from all 197. |
 
-Press **1–4** to pick, or **Enter** for the one you played last. Escape steps back one screen at a time.
+Each game keeps its own best scores and its own progress, because knowing a country's flag says nothing about whether you would recognise its outline.
+
+**The rules of a run.** The grid opens at three options and grows to four, five and six at 3, 7 and 12 correct answers, while the clock tightens by a second per step. A correct answer is worth 100 points, up to 50% more for answering fast, multiplied by a streak bonus capping at 2×. A wrong pick or a timeout costs a life and resets the streak; a correct answer carries roughly a one-in-eight chance of winning a life back, up to a ceiling of five.
+
+![A correct answer revealed](docs/reveal.png)
+
+Answer with the mouse or press **1–6**. **Enter** repeats whatever you played last, and **Esc** steps back one screen at a time. **Options** sets starting lives for Normal runs, turns sound on or off, and resets every best score.
+
+Questions are drawn from the **197 sovereign states**. Territories, the four UK home nations and the EU flag ship with the app but stay out of the pool — offering Scotland alongside the United Kingdom would not be a fair round.
 
 ### Learning progress
 
-Every mode records what you show it, because mastery is a claim about what you know rather than about which mode you picked. Each flag sits in a box:
+Every mode records what you show it, because mastery is a claim about what you know rather than about which mode you picked. Each country sits in a box, per game:
 
-- **Unseen** — the 197 flags you have not been asked about yet
-- **Boxes 1–3** — being learned. A *quick* correct answer promotes a flag; a slow one holds it where it is, because at four options a slow correct answer is often a guess that landed. A miss costs a box.
-- **Box 4 — mastered.** Out of rotation, apart from an occasional re-test. Fail that and the flag drops back to box 2, so the number can fall as well as rise.
+- **Unseen** — not yet asked about
+- **Boxes 1–3** — being learned. A *quick* correct answer promotes it; a slow one holds it where it is, because at four options a slow correct answer is often a guess that landed. A miss costs a box.
+- **Box 4 — mastered.** Out of rotation apart from an occasional re-test. Fail that and it drops to box 2, so the figure falls as well as rises.
 
-Recall tests the same knowledge in the opposite direction — picking a flag and naming one are the two sides of the same card — so it moves the same boxes. A flag only stays mastered if you can handle it whichever way it comes up.
-
-The **MASTERED** figure on the scoreboard is box 4 as a share of the pool. Normal mode moves it slowly — it draws uniformly from all 197, so the same flag comes round rarely. Learning mode drives it: it works on twenty flags at a time and returns to them until they graduate, letting new ones in only as others are learned.
-
-
-Questions are drawn from the **197 sovereign states**. Territories, the four UK home nations and the EU flag ship with the app but are kept out of the question pool — offering Scotland alongside the United Kingdom would not be a fair round.
+The **MASTERED** percentage is box 4 as a share of the pool. Normal mode moves it slowly, drawing uniformly from all 197; Learning mode drives it, working on twenty at a time and returning to them until they graduate.
 
 ## Status
 
 | Milestone | State |
 | --- | --- |
 | **1 — Guess the Flag** | ✅ Playable |
-| 2 — Guess the Border | Not started |
-| 3 — Find the City | Not started |
-| 4 — Find the Landmark | Not started |
+| **2 — Guess the Border** | ✅ Playable |
+| 3 — Find the City | Not started — drop a pin on a world map, scored by distance |
+| 4 — Find the Landmark | Not started — the same pin-drop over monuments |
 
-## Getting Started
+Later: sub-national modes reusing the map and distance scoring — "find the city in Denmark", "find the state".
 
-Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). No other setup — the flag assets are committed, so a fresh clone runs as-is.
+## Building
+
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). Nothing else — the assets are committed, so a fresh clone runs as-is.
 
 ```bash
-git clone https://github.com/Thyssen1/GeoQuest.git
-cd GeoQuest
-dotnet run
+git clone https://github.com/Thyssen1/GeoQuest.git && cd GeoQuest && dotnet run
 ```
-
-Run the tests:
 
 ```bash
 dotnet test
 ```
 
-### Build configurations
-
-`GeoQuest.sln` defines **Debug|Any CPU**, **Debug|x64**, **Release|Any CPU** and **Release|x64**. The x64 configurations produce genuinely 64-bit assemblies (`Amd64` rather than `MSIL`) in `bin/x64/`, leaving the AnyCPU output in `bin/` untouched.
-
-```bash
-dotnet build GeoQuest.sln -c Release -p:Platform=x64
-```
-
-The classic `.sln` format is used deliberately over the newer `.slnx`, which requires Visual Studio 2022 17.14+ or Rider 2025.
-
-### Building the standalone executable
+The solution defines **Debug** and **Release** for both **Any CPU** and **x64**; the x64 configurations write to `bin/x64/`, leaving the Any CPU output untouched. Standalone builds come from the publish profile:
 
 ```bash
 dotnet publish -p:PublishProfile=win-x64
 ```
 
-Output lands in `bin/publish/win-x64/GeoQuest.exe` — one self-contained file, roughly 50 MB. Settings live in [Properties/PublishProfiles/win-x64.pubxml](Properties/PublishProfiles/win-x64.pubxml).
+macOS is deliberately **not** published as a single file — a plain publish into `GeoQuest.app/Contents/MacOS` keeps every binary inside the bundle, where single-file publishing would extract dylibs to a temp directory at runtime and complicate notarising later. It ships as a **tarball, not a zip**, because tar preserves the executable bit and the app will not launch without it. See [release.yml](.github/workflows/release.yml) for the exact commands.
 
-For Linux, swap the runtime identifier:
-
-```bash
-dotnet publish -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true
-```
-
-### Building for macOS
-
-macOS is **not** built as a single file. A plain publish into `GeoQuest.app/Contents/MacOS` keeps every binary inside the bundle, whereas single-file publishing extracts native dylibs to a temp directory at runtime — which is awkward to notarise later.
-
-```bash
-dotnet publish GeoQuest.csproj -c Release -r osx-arm64 --self-contained true \
-  -p:DebugType=none -o GeoQuest.app/Contents/MacOS
-sed "s/__VERSION__/1.0.0/g" build/macos/Info.plist > GeoQuest.app/Contents/Info.plist
-chmod +x GeoQuest.app/Contents/MacOS/GeoQuest
-tar -czf GeoQuest-macos-arm64.tar.gz GeoQuest.app
-```
-
-Use `osx-x64` for Intel Macs. The bundle is ~115 MB uncompressed and ~46 MB tarred.
-
-A **tarball, not a zip** — tar preserves the executable bit, and without it the app will not launch. This matters especially when building on Windows, whose filesystem does not carry that bit at all.
-
-Code signing and notarisation are not set up. That requires an Apple Developer ID and a macOS machine, so it can only run on the `macos-latest` job.
-
-**On trimming:** `PublishTrimmed` cuts the executable from 50 MB to 24 MB, but the app then **crashes on startup**:
-
-```
-System.InvalidOperationException: Reflection-based serialization has been disabled
-   at GeoQuest.Services.JsonCountryRepository.Load(Stream json)
-```
-
-Two things stand in the way, both flagged as `IL2026` at publish time. `System.Text.Json` uses reflection unless given a source-generated `JsonSerializerContext`, and Avalonia's default `ViewLocator` resolves views by reflection — [ViewLocator.cs](ViewLocator.cs) carries a `RequiresUnreferencedCode` attribute saying exactly that. Fixing both is a prerequisite for trimming, and for NativeAOT later.
+**Trimming is off, deliberately.** It halves the executable but the app then crashes on startup: `System.Text.Json` needs a source-generated context, and Avalonia's `ViewLocator` resolves views by reflection. Both are flagged `IL2026` at publish time, and both must be fixed before trimming — or NativeAOT — is possible.
 
 ### Cutting a release
 
-Releases are built by [.github/workflows/release.yml](.github/workflows/release.yml), triggered by pushing a version tag. First document the release in `ChangeLog.txt` — the workflow refuses to build a version the changelog does not mention:
-
-```
-1.1.0
-- Added sound effects
-- Added learning and hard mode in addition to normal mode
-```
-
-Then tag and push:
+Document the version in `ChangeLog.txt` first — **the workflow refuses to build a version the changelog does not mention** — then tag and push:
 
 ```bash
-git tag -a v1.1.0 -m "GeoQuest 1.1.0"
+git tag -a v1.3.1 -m "GeoQuest 1.3.1" && git push origin v1.3.1
 ```
 
-```bash
-git push origin v1.1.0
-```
+The workflow runs the tests on every target platform, builds the three artifacts in parallel with `Version` taken from the tag, and publishes the release with checksums. Two things fail it before anything compiles: a version that is not `major.minor.patch`, and a version missing from the changelog. To rehearse without tagging, run it manually from the Actions tab — that builds and uploads artifacts but creates no release.
 
-The workflow runs the test suite on **every** target platform, then builds three artifacts in parallel — Windows x64, macOS arm64 and macOS x64 — with `Version` taken from the tag. It publishes a `SHA256SUMS.txt` covering all of them and creates the GitHub Release with notes generated from the commit history.
+## How it is put together
 
-To rehearse without tagging, run the workflow manually from the Actions tab. `workflow_dispatch` performs every build and uploads the artifacts, but skips creating a release.
-
-Two things fail the build before anything is compiled, rather than producing a release that is wrong: a version that does not match `major.minor.patch`, and a version with no entry in `ChangeLog.txt`. A rehearsal run reports a missing changelog entry as a warning instead of an error, since its default version is never going to be in the file.
-
-## Tech Stack
-
-| Concern | Choice |
-| --- | --- |
-| Language | C# |
-| UI framework | Avalonia UI 12 |
-| Architecture | MVVM |
-| MVVM toolkit | [CommunityToolkit.Mvvm](https://learn.microsoft.com/dotnet/communitytoolkit/mvvm/) 8.4 |
-| Target framework | .NET 10 |
-
-Bindings use `AvaloniaUseCompiledBindingsByDefault`, so views declare `x:DataType` and binding errors surface at compile time rather than at runtime.
-
-### Platform targets
-
-The repository currently builds a **desktop** application. Mobile — iOS in particular — is an explicit goal.
-
-To keep that path open, all game logic stays platform-agnostic: no `System.Windows`, no desktop-only file-system assumptions, no P/Invoke. Models, Services and ViewModels are portable as-is. When mobile is added, the project will split into a shared library plus per-platform heads (`GeoQuest.Desktop`, `GeoQuest.iOS`), which requires the relevant workload:
-
-```bash
-dotnet workload install ios
-```
-
-## Project Structure
+C# and Avalonia UI 12, MVVM via [CommunityToolkit.Mvvm](https://learn.microsoft.com/dotnet/communitytoolkit/mvvm/). Bindings are compiled (`AvaloniaUseCompiledBindingsByDefault`), so views declare `x:DataType` and binding errors surface at build time.
 
 ```
 GeoQuest/
-├── Assets/            # Images and static data compiled as AvaloniaResource
+├── Assets/            # Compiled as AvaloniaResource
 │   ├── countries.json # ISO code -> name, region, kind
-│   ├── Flags/         # Country flags, named by ISO 3166-1 alpha-2 code
-│   │                  #   *.svg = sources (not shipped), *.png = generated (shipped)
-│   ├── Sounds/        # Answer sounds as 16-bit PCM WAVs, generated by tools/SoundMaker
-│   └── Borders/       # Country outlines as unit-square polygons, generated by tools/BorderBaker
-├── Models/            # Plain domain types (Country, FlagQuestion, GameRules)
-├── Services/          # Data access and question generation behind interfaces
-├── ViewModels/        # Presentation state and commands (CommunityToolkit.Mvvm)
-├── Views/             # Avalonia XAML views and their code-behind
-├── tools/
-│   ├── FlagConverter/ # Dev-time SVG -> PNG rasteriser (not part of the app)
-│   ├── SoundMaker/    # Dev-time WAV synthesiser (not part of the app)
-│   └── BorderBaker/   # Dev-time shapefile -> outline baker (not part of the app)
-├── tests/
-│   └── GeoQuest.Tests/ # xUnit suite over rules, data and question generation
-├── App.axaml          # Application entry point, themes and styles
-├── Program.cs         # Desktop bootstrapper
-└── ViewLocator.cs     # Convention-based ViewModel → View resolution
+│   ├── Flags/         # *.svg sources (not shipped), *.png generated (shipped)
+│   ├── Sounds/        # 16-bit PCM WAVs, generated
+│   └── Borders/       # Country outlines as unit-square polygons, generated
+├── Models/            # Domain types and the pure rules (GameRules, LearningRules)
+├── Services/          # Data access, question generation, asset loading
+├── ViewModels/        # Presentation state and commands
+├── Views/             # Avalonia XAML and code-behind
+├── Styles/Theme.axaml # Palette and shared control styles
+├── tools/             # Dev-time asset generators, not part of the app
+└── tests/
 ```
 
-The layering rule: **Views** bind to **ViewModels**, which depend on **Services** through interfaces, which return **Models**. Nothing flows the other way — Models and Services never reference Avalonia types. This is what keeps the game logic unit-testable and portable to mobile.
+**Views** bind to **ViewModels**, which use **Services**, which return **Models**. Nothing flows the other way: Models never reference Avalonia, which is what keeps the rules unit-testable and portable to mobile later. Two interfaces survive where there are genuinely two implementations to choose between — `IQuestionGenerator` (uniform or box-driven) and `ICountryArtwork` (flags or outlines).
 
-### Navigation
+`MainWindowViewModel` is the shell: it owns which page is on screen and the lifetime of each. Pages never navigate themselves — they raise intent and the shell decides what it means. The chosen game and mode resolve to a `DifficultyProfile`, which holds lives, bonus-life odds, grid width, clock and session length as *values* rather than as branches through the rules; a run is built fresh from it and disposed when it ends.
 
-`MainWindowViewModel` is the shell. It owns which page is on screen (`CurrentPage`) and the lifetime of each one; `ViewLocator` resolves each page ViewModel to its View by naming convention.
+Three adapters know about `avares://` so nothing else has to: `AssetCountryData`, `FlagImageLoader` and `OutlineLoader`.
 
-Pages never navigate themselves — they raise intent (`PlayRequested`, `GameChosen`, `ModeChosen`, `BackRequested`, `MenuRequested`) and the shell decides what that means. That keeps navigation rules in one file rather than scattered across screens.
+## Assets
 
-**Play** opens the game chooser and then the mode chooser; together they resolve to a `DifficultyProfile` — lives, bonus-life odds, grid width and session length as values rather than as branches through the rules. A run is constructed fresh from that profile and disposed when it ends, so settings changed in Options take effect immediately and no timers keep running behind the menu.
-
-Two small adapters are the deliberate exception: `FlagImageLoader` and `AssetCountryData` know about `avares://`, so nothing else has to.
-
-`tools/` and `tests/` are removed from the root project's compile globs — the app project lives at the repository root, so its default `**/*.cs` would otherwise compile both into the game.
-
-## Assets Strategy
-
-### Flags
-
-Flag images live in `Assets/Flags`, named by their **ISO 3166-1 alpha-2 code, lowercased**:
-
-```
-Assets/Flags/dk.png
-Assets/Flags/us.png
-Assets/Flags/mx.png
-```
-
-SVG files are the **source of truth**; the `.png` files beside them are **generated** and are what the app ships.
-
-Every generated PNG is exactly **480×320**. Source flags have wildly different true proportions — Nepal is 0.83:1 and the only taller-than-wide national flag, Qatar is 2.55:1, Denmark 1.32:1 — and each is **stretched to fill** the shared canvas. This is a deliberate trade: a perfectly uniform grid, at the cost of showing flags at other than their official proportions. Because every image is identical in size and ratio, the view renders with `Stretch="Fill"` and every tile matches.
-
-### Regenerating the PNGs
-
-The game loads PNGs through Avalonia's built-in `Bitmap`, which keeps the app free of any SVG rendering dependency. Conversion happens at dev time via a committed tool:
-
-```bash
-dotnet run --project tools/FlagConverter -- --height 320 --fill --force
-```
-
-Existing PNGs newer than their source are skipped, so `--force` is needed when changing output mode. Three modes are available:
-
-| Flag | Output |
-| --- | --- |
-| `--fill` | Stretch to fill the shared canvas. Uniform size, distorted proportions. **Current setting.** |
-| *(default)* | Centre on the shared canvas with transparent padding. Uniform size, true proportions, visible padding. |
-| `--native` | Pin height only, width follows the source `viewBox`. True proportions, ragged grid. |
-
-`--ratio` sets the canvas shape (default `1.5`, i.e. 3:2). Re-run after adding or updating any flag.
-
-Switching mode requires a matching change to the `Image` in [Views/GameView.axaml](Views/GameView.axaml): `Stretch="Fill"` suits `--fill`, while the other two modes want `Stretch="Uniform"`.
-
-The `tools/` directory is excluded from the main project's compile globs, and `Assets/Flags/*.svg` is excluded from `AvaloniaResource`, so the SVG sources stay in the repo without being embedded in the shipped app.
-
-### Country metadata
-
-`Assets/countries.json` holds one entry per flag, keyed by ISO code:
-
-```json
-{ "code": "dk", "name": "Denmark", "region": "Europe", "kind": "sovereign" }
-```
-
-`kind` is one of `sovereign`, `territory`, `subdivision` or `other`, and is what filters the question pool. `region` is unused by Milestone 1 but is in place for regional filtering and the later map milestones.
-
-The file and the flag directory must stay in sync — **255 entries, 255 images**, matched by code in both directions. The ISO code is the single join key across every mini-game: it links a flag image, a country outline and a set of cities to one country record.
-
-### Sounds
-
-The three answer sounds are synthesised rather than sourced: `tools/SoundMaker` writes them as short 16-bit PCM WAVs, so the audio is ours to ship with no licence to track and no decoder to carry. Re-run it after changing a voice:
-
-```bash
-dotnet run --project tools/SoundMaker
-```
-
-Playback uses whatever the host already provides — winmm on Windows, `afplay` on macOS, PulseAudio or ALSA on Linux — which keeps an audio stack and its native binaries out of a drop that already carries Skia. Because those players read files and Avalonia resources are not files, `SystemSoundPlayer` unpacks each WAV once, into a `sounds/` folder beside the player's save data rather than into the shared system temp directory. Everything about sound fails silently: no audio device, no player installed, nowhere to unpack to, and the round carries on regardless.
-
-### Country outlines
-
-Guess the Border draws from `Assets/Borders/borders.json`: every sovereign country as rings of x,y pairs on its own unit square, about 450 KB for all 197. `tools/BorderBaker` bakes it from Natural Earth's **Admin 0 – Countries** shapefile, which is public domain:
-
-```bash
-dotnet run --project tools/BorderBaker -- --input path\to\ne_10m_admin_0_countries.shp
-```
-
-The shapefile itself is ~10 MB and is regenerated from perhaps once a year, so it is not kept in the repository — download it from [Natural Earth](https://www.naturalearthdata.com/downloads/) when you need to re-bake.
-
-The app's own `countries.json` decides what belongs in the pool; the shapefile is only asked for the shape of each entry, matched on ISO 3166-1 alpha-2 — the same key that addresses the flags. Three things the baker has to get right, each of which produces a nonsense silhouette otherwise:
-
-- **Scale.** Every country is normalised onto its own square, so Russia and Monaco present at a comparable size rather than the answer being given away by how much of the screen is filled.
-- **Distant territories.** France owns French Guiana and Norway owns Svalbard. Drawn to a shared square those shrink the country anyone would recognise to a speck, so a landmass more than 3° from the rest of the country, or one that would stretch the outline past 1.75× its main landmass, is left out. Corsica and Hokkaido stay; Svalbard, Hawaii and the Canaries do not.
-- **The antimeridian.** Russia and Fiji straddle 180°, where a naive longitude smears the country across the whole world.
-
-### Build action
-
-All assets are compiled with the `AvaloniaResource` build action, configured in `GeoQuest.csproj` with a wildcard, so **new files are picked up automatically** — no per-file edits needed:
+Everything ships through one wildcard, so new files are picked up automatically:
 
 ```xml
 <AvaloniaResource Include="Assets\**" Exclude="Assets\Flags\*.svg" />
 ```
 
-Embedding assets as resources rather than shipping loose files is what makes them work identically on desktop and on mobile, where the app bundle is read-only and loose-file paths are unreliable. Assets are addressed with the `avares://` scheme:
+Embedding as resources rather than loose files is what makes them work identically on desktop and on mobile, where the bundle is read-only.
 
-```csharp
-var uri = new Uri($"avares://GeoQuest/Assets/Flags/{isoCode}.png");
-using var stream = AssetLoader.Open(uri);
-var bitmap = new Bitmap(stream);
-```
+Three generators live in `tools/`, each committed so assets can be rebuilt from source:
 
-## Roadmap
+| Run | Produces |
+| --- | --- |
+| `dotnet run --project tools/FlagConverter -- --height 320 --fill --force` | 480×320 flag PNGs from the SVG sources |
+| `dotnet run --project tools/SoundMaker` | The three answer sounds as WAVs |
+| `dotnet run --project tools/BorderBaker -- --input <ne_10m_admin_0_countries.shp>` | `borders.json` — 197 outlines, ~450 KB |
 
-### Milestone 1 — "Guess the Flag" ✅
+**Flags** are keyed by lowercase ISO 3166-1 alpha-2 (`dk.png`), and every PNG is stretched to an identical 480×320 canvas. That trades true proportions for a perfectly uniform grid, which is why the view uses `Stretch="Fill"`. `countries.json` must stay in sync — 255 entries, 255 images — and its ISO code is the single join key across every mini-game.
 
-Complete. See [How it plays](#how-it-plays) for the rules as implemented.
+**Sounds** are synthesised rather than sourced, so the audio is ours to ship with no licence to track and no decoder to carry. Playback borrows whatever the host provides: winmm on Windows, `afplay` on macOS, PulseAudio or ALSA on Linux. Every failure path is silent — no device, no player, nowhere to unpack to, and the round carries on.
 
-### Milestone 2 — "Guess the Border"
-
-Identify a country from its outline/silhouette alone. Requires country geometry rendered from vector data, plus a normalisation pass so wildly different country sizes present at a comparable, fair scale.
-
-### Milestone 3 — "Find the City" (World Map)
-
-Drop a pin on a blank world map as close to a target city as possible. Scoring is distance-based rather than binary, which requires a map projection and a great-circle distance calculation between the guess and the true coordinates.
-
-### Milestone 4 — "Find the Landmark"
-
-Pinpoint famous global monuments on the world map. Shares the pin-drop and distance-scoring mechanics from Milestone 3, with a landmark dataset in place of cities.
-
-### Future scope
-
-Country-specific and sub-national modes, reusing the Milestone 3 map and scoring machinery at a tighter zoom:
-
-- "Find the city in Denmark"
-- "Find the city in the United States"
-- "Find the city in Mexico"
-- "Find the State/Region" — identify sub-national divisions
+**Outlines** are baked from Natural Earth's public-domain *Admin 0 – Countries* shapefile, which is ~10 MB and not kept in the repository; download it from [Natural Earth](https://www.naturalearthdata.com/downloads/) to re-bake. The baker has three jobs, each of which produces a nonsense silhouette if skipped: normalising every country onto its own square so Russia and Monaco present comparably; dropping distant territories, so France is the hexagon rather than a speck beside French Guiana; and handling the antimeridian, where Russia and Fiji otherwise smear across the world.
 
 ## Credits
 
-Flag artwork comes from [hampusborgos/country-flags](https://github.com/hampusborgos/country-flags), a set of accurate flag renders sourced from Wikimedia Commons and checked against the relevant national legislation. That project states the flags are **in the public domain**, on the basis that flags are not subject to copyright protection — while noting that individual countries may impose separate, non-copyright restrictions on how their flag is used.
+Flag artwork comes from [hampusborgos/country-flags](https://github.com/hampusborgos/country-flags), sourced from Wikimedia Commons and checked against the relevant national legislation. That project states the flags are **in the public domain**, on the basis that flags are not subject to copyright — while noting that individual countries may impose separate, non-copyright restrictions on their use. Only the SVG sources are taken from upstream; the PNGs here are generated from them.
 
-Only the SVG sources are taken from upstream. The `.png` files in this repository are generated from them by `tools/FlagConverter` and are not upstream artifacts. Upstream also ships pre-rendered PNGs at 100/250/1000px widths; GeoQuest does not use them, because it needs a uniform 480×320 canvas rather than native proportions.
+Country outlines come from [Natural Earth](https://www.naturalearthdata.com/), which places its data in the public domain.
 
-The naming convention here follows upstream directly: ISO 3166-1 alpha-2, plus the six-character `gb-eng`/`gb-sct`/`gb-wls`/`gb-nir` codes for the UK's constituent countries, and the user-assigned `xk` for Kosovo.
-
-Country names, regions and `kind` classifications in `Assets/countries.json` were compiled for this project and are not from upstream.
+Country names, regions and `kind` classifications in `Assets/countries.json` were compiled for this project.

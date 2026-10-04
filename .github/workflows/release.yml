@@ -157,6 +157,15 @@ jobs:
 
           chmod +x "$APP/Contents/MacOS/GeoQuest"
 
+          # Ad-hoc signature. It makes the app no more trusted, but it makes the signature
+          # VALID, and that is the difference between Gatekeeper offering to open an app
+          # from an unidentified developer and declaring it damaged with no way past.
+          # Signed innermost first: sealing the bundle has to come after its contents.
+          find "$APP/Contents/MacOS" -name "*.dylib" -exec codesign --force --sign - {} +
+          codesign --force --sign - "$APP/Contents/MacOS/GeoQuest"
+          codesign --force --sign - "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+
           mkdir -p dist
           tar -czf "dist/GeoQuest-$VERSION-${{ matrix.label }}.tar.gz" "$APP"
 
@@ -217,13 +226,17 @@ jobs:
             Extract the tarball and drag **GeoQuest.app** to your Applications folder.
             Apple Silicon Macs want the `arm64` build; Intel Macs want `x64`.
 
-            The app is unsigned and un-notarised, so Gatekeeper will refuse it on first
-            launch. Right-click the app and choose **Open**, then confirm. If macOS still
-            refuses, clear the quarantine flag:
+            The app is signed, but not by a paid Apple developer account, so Gatekeeper
+            stops it the first time. There is no Terminal command to run:
 
-            ```
-            xattr -dr com.apple.quarantine /Applications/GeoQuest.app
-            ```
+            1. Double-click **GeoQuest**. macOS says it cannot check it for malicious
+               software. Click **Done**.
+            2. Open **System Settings → Privacy & Security**, scroll down, and click
+               **Open Anyway** next to GeoQuest.
+            3. Confirm. macOS remembers, so this is a one-time step.
+
+            On macOS 14 and earlier you can skip that by right-clicking the app and
+            choosing **Open** instead.
 
             ### Verifying a download
 
