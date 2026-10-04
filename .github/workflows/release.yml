@@ -160,8 +160,11 @@ jobs:
           # Ad-hoc signature. It makes the app no more trusted, but it makes the signature
           # VALID, and that is the difference between Gatekeeper offering to open an app
           # from an unidentified developer and declaring it damaged with no way past.
-          # Signed innermost first: sealing the bundle has to come after its contents.
-          find "$APP/Contents/MacOS" -name "*.dylib" -exec codesign --force --sign - {} +
+          # Signed innermost first: sealing the bundle has to come after its contents. Every
+          # file in Contents/MacOS is signed, not just the dylibs: codesign treats that whole
+          # folder as code, and a .NET app keeps its managed .dll and .json files there too,
+          # so signing only the native libraries leaves the bundle impossible to seal.
+          find "$APP/Contents/MacOS" -type f ! -name GeoQuest -exec codesign --force --sign - {} \;
           codesign --force --sign - "$APP/Contents/MacOS/GeoQuest"
           codesign --force --sign - "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"

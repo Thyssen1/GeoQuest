@@ -2,7 +2,7 @@
 
 **A fast-paced geography trivia game for desktop, built with C# and Avalonia UI.**
 
-Inspired by the classic *Geo Challenge*, GeoQuest is a set of timed mini-games that ask you to identify countries — from their flags, their outlines and their capitals, with landmarks to come. Answer correctly and it gets harder: more options to choose from, less time to choose.
+Inspired by the classic *Geo Challenge*, GeoQuest is a set of timed mini-games that ask you to identify countries — from their flags, their outlines and their capitals. Answer correctly and it gets harder: more options to choose from, less time to choose.
 
 | | |
 | --- | --- |
@@ -84,9 +84,6 @@ The **MASTERED** percentage is box 4 as a share of the pool. Normal mode moves i
 | **1 — Guess the Flag** | ✅ Playable |
 | **2 — Guess the Border** | ✅ Playable |
 | **3 — Find the City** | ✅ Playable |
-| 4 — Find the Landmark | Not started — the same pin-drop over monuments |
-
-Later: sub-national modes reusing the map and distance scoring — "find the city in Denmark", "find the state".
 
 ## Building
 
